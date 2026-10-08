@@ -1,0 +1,33 @@
+# Paths are relative to this file.
+project_name: commons-lang
+release: rel/commons-lang-3.21.0          # git tag you analyse (pin it!)
+project_root: projects/commons-lang
+source_dirs: [src/main/java]
+classes_dir: target/classes                # relative to project_root
+package_prefix: org.apache.commons.lang3   # only packages under this prefix count
+
+designite_csv: data/designite/commons-lang/ArchitectureSmells.csv
+data_dir: data/commons-lang
+
+smells: [CyclicDependency, UnstableDependency, GodComponent, FeatureConcentration]
+
+thresholds:                 # used only for the independent structural cross-check
+  god_component_loc: 27000
+  god_component_classes: 30
+  unstable_ratio: 0.3       # share of a package's dependencies pointing to less stable packages
+
+benchmark:
+  clean_ratio: 1.0          # clean packages sampled per smelly package
+  seed: 42
+
+llm:
+  model: claude-sonnet-5-5
+  max_tokens: 4000
+  temperature: 0            # set to null if a model rejects it
+  repeats: 3
+
+context:
+  max_source_chars: 60000   # above this, a package is sent as a skeleton (signatures only)
+  history_commits: 20
+  rag_top_k: 5
+  embedding_model: jinaai/jina-embeddings-v2-base-code   # "hash" = offline test embedder

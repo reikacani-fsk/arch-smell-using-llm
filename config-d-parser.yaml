@@ -1,0 +1,35 @@
+# D_Parser (C#). Paths are relative to this file.
+project_name: D_Parser
+language: csharp
+release: 0cdef0ec17ddf955f348403a4c81c907e30e1052   # last commit before the Dec 2019 Designite run (edges match it exactly)
+project_root: projects/D_Parser
+source_dirs: [DParser2]                    # the library only; tests and tools excluded
+classes_dir: bin                           # unused for C#
+package_prefix: D_Parser                   # only namespaces under this prefix count
+
+# Designite (C#) result from the miningSmellData set, copied from Results/aBothe_D_Parser
+designite_csv: data/designite/D_Parser/Designite_DParser2_ArchSmells.csv
+data_dir: data/D_Parser
+
+smells: [CyclicDependency, UnstableDependency, GodComponent, FeatureConcentration]
+
+thresholds:                 # used only for the independent structural cross-check
+  god_component_loc: 27000
+  god_component_classes: 30
+  unstable_ratio: 0.3       # share of a package's dependencies pointing to less stable packages
+
+benchmark:
+  clean_ratio: 1.0          # clean packages sampled per smelly package
+  seed: 42
+
+llm:
+  model: claude-sonnet-5-5
+  max_tokens: 4000
+  temperature: 0            # set to null if a model rejects it
+  repeats: 3
+
+context:
+  max_source_chars: 60000   # above this, a package is sent as a skeleton (signatures only)
+  history_commits: 20
+  rag_top_k: 5
+  embedding_model: jinaai/jina-embeddings-v2-base-code   # "hash" = offline test embedder
