@@ -1,10 +1,10 @@
 .venv/
 __pycache__/
 .pytest_cache/
-projects/
+#projects/
 data/
 tools/*.jar
-tools/DesigniteConsole/
+`#tools/DesigniteConsole/
 DesigniteLog*.txt
 .DS_Store
 tools/.config
