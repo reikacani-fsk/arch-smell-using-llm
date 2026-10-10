@@ -23,7 +23,7 @@ output/              analysis results
 
 ## Usage
 
-Run from the project folder:
+Run from the project folder in Git Bash on Windows:
 
 ```bash
 bash scripts/screen.sh    # settings (date, size, limit) at the top of the script
