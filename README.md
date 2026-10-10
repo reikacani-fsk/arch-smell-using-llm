@@ -9,7 +9,7 @@ and runs Designite on them.
 scripts/
   screen.sh          1. search GitHub and measure candidates   -> data/screened.tsv
   clone_repos.sh     2. clone the repos that have a .sln        -> repos/, data/subjects.csv
-  run_designite.sh   3. run Designite on every cloned repo      -> output/designite/
+  run_designite.sh   3. run Designite on all or chosen repos    -> output/designite/
 data/                screening results and data/subjects.csv (repo, url, tag, commit)
 repos/               cloned repos (not committed; re-create with step 2)
 tools/               third-party tools, e.g. tools/designite/ (not committed)
@@ -29,6 +29,13 @@ Run from the project folder:
 bash scripts/screen.sh         # settings (date, size, limit) at the top of the script
 bash scripts/clone_repos.sh
 bash scripts/run_designite.sh  # needs tools/designite/DesigniteConsole.dll
+```
+
+`run_designite.sh` runs on every repo in `data/subjects.csv`. To run only some,
+pass their names as in the `repo` column:
+
+```bash
+bash scripts/run_designite.sh kangarooking/Ta chenjie2010/BlueSolution
 ```
 
 `clone_repos.sh` checks out each repo's latest tag; repos without tags stay on
