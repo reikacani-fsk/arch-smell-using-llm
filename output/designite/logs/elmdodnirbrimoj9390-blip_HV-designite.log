@@ -1,0 +1,18 @@
+Designite Console (Version 5.3.0.0)
+(c) 2026 Designite. All rights reserved.
+Analyzing projects...
+Analyzing projects - Done.
+Exporting results in CSV files...
+Exporting results in CSV files - Done.
+--------Analysis summary--------
+Solution path: C:\Users\reika\Downloads\master_thesis_demos\arch-smell-using-llm\repos\elmdodnirbrimoj9390-blip_HV\src\ExHyperV.sln
+Total namespaces: 10	Total classes: 289
+Total methods: 1428	Total lines of code: 42991
+Total architecture smells: 19
+Total design smells: 182
+Total implementation smells: 1571
+Total testability smells: 131
+Total test smells: 0
+Total duplication: 0,05%
+--------------------------------
+Processing complete.
