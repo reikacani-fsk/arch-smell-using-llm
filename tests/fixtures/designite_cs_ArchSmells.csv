@@ -1,4 +1,0 @@
-Architecture smell,Project,Namespace,Cause,Responsible Classes,Participating Classes
-Cyclic Dependency,minirepo-cs,Ex.A,The participating components in the cycle are: Ex.A' Ex.B,Ex.A.Alpha,Ex.A.Alpha' Ex.B.Beta
-Cyclic Dependency,minirepo-cs,Ex.B,The participating components in the cycle are: Ex.A' Ex.B,Ex.B.Beta,Ex.A.Alpha' Ex.B.Beta
-Feature Concentration,minirepo-cs,Ex.C,Low cohesion,Ex.C.Gamma,

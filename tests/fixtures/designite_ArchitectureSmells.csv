@@ -1,5 +1,0 @@
-Project Name,Package Name,Architecture Smell,Cause of the Smell
-minirepo,com.ex.a,Cyclic Dependency,The tool detected the smell in this component because it participates in a cycle with com.ex.b
-minirepo,com.ex.b,Cyclic Dependency,The tool detected the smell in this component because it participates in a cycle with com.ex.a
-minirepo,com.ex.c,Feature Concentration,Low cohesion
-minirepo,com.ex.c,Feature Concentration,duplicate row
