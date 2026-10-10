@@ -60,8 +60,9 @@ def index_sources(source_dirs, language="java") -> dict:
     """package name -> list[SourceFile]"""
     index = defaultdict(list)
     if language == "csharp":
+        from .csharp import cs_files
         for d in source_dirs:
-            for p in sorted(Path(d).rglob("*.cs")):
+            for p in cs_files(d):
                 sf = parse_csharp_file(p)
                 if sf.types:                       # skips AssemblyInfo.cs and similar
                     index[sf.package].append(sf)

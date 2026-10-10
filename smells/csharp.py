@@ -223,11 +223,20 @@ class _Scope:
         return None
 
 
+BUILD_DIRS = {"bin", "obj", ".vs"}
+
+
+def cs_files(source_dir) -> list[Path]:
+    """.cs files of a source dir, without build output and IDE folders (generated code)."""
+    d = Path(source_dir)
+    return sorted(p for p in d.rglob("*.cs") if not BUILD_DIRS & set(p.relative_to(d).parts[:-1]))
+
+
 def class_graph(source_dirs, prefix: str) -> nx.DiGraph:
     """Class-level graph (nested types folded into their outer type), project types only."""
     decls = []
     for d in source_dirs:
-        for p in sorted(Path(d).rglob("*.cs")):
+        for p in cs_files(d):
             _, _, file_decls = parse(p.read_bytes())
             decls += file_decls
     global_usings = [u for _, _, usings in decls for u in usings if u[0] == "global"]

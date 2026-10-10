@@ -8,3 +8,7 @@ tools/*.jar
 DesigniteLog*.txt
 .DS_Store
 tools/.config
+tools/DesigniteConsole/Logs/
+projects/**/.vs/
+projects/**/obj/
+projects/**/bin/

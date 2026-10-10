@@ -1,14 +1,21 @@
 # D_Parser (C#). Paths are relative to this file.
 project_name: D_Parser
 language: csharp
-release: 0cdef0ec17ddf955f348403a4c81c907e30e1052   # last commit before the Dec 2019 Designite run (edges match it exactly)
-project_root: projects/D_Parser
-source_dirs: [DParser2]                    # the library only; tests and tools excluded
+release: 0cdef0ec17ddf955f348403a4c81c907e30e1052   # commit of the analysed code; C3/C4 need it in a git clone
+project_root: projects/DParser2            # the DParser2 library (DParser2.sln + .csproj)
+source_dirs: [.]                           # bin/, obj/ and .vs/ are skipped
 classes_dir: bin                           # unused for C#
 package_prefix: D_Parser                   # only namespaces under this prefix count
 
-# Designite (C#) result from the miningSmellData set, copied from Results/aBothe_D_Parser
-designite_csv: data/designite/D_Parser/Designite_DParser2_ArchSmells.csv
+# Designite baseline, run on Windows with `python -m smells.cli --config config-d-parser.yaml designite`:
+#   cd tools\DesigniteConsole;  dotnet DesigniteConsole.dll -i <abs input> -o <abs output_dir>
+designite:
+  tool: tools/DesigniteConsole/DesigniteConsole.dll
+  input: projects/DParser2/DParser2.sln
+  output_dir: data/designite/D_Parser-windows
+designite_csv: data/designite/D_Parser-windows    # a folder is searched for the *ArchSmells*.csv
+# Older 2019 result from the miningSmellData set (Results/aBothe_D_Parser):
+# designite_csv: data/designite/D_Parser/Designite_DParser2_ArchSmells.csv
 data_dir: data/D_Parser
 
 smells: [CyclicDependency, UnstableDependency, GodComponent, FeatureConcentration]

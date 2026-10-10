@@ -14,7 +14,7 @@ DesigniteJava (Java) or Designite (C#) and against manually validated labels.
 | Project | Config | Language | Designite baseline |
 |---|---|---|---|
 | Commons IO 2.22.0 (pilot) | `config-commons-io.yaml` | Java | DesigniteJava, run locally |
-| D_Parser @ `0cdef0ec` | `config-d-parser.yaml` | C# | 2019 result from `miningSmellData`, or a new Windows run |
+| D_Parser (`projects/DParser2`) | `config-d-parser.yaml` | C# | DesigniteConsole, run on Windows (2019 `miningSmellData` result kept as an alternative) |
 
 ## Setup
 
@@ -38,12 +38,17 @@ $c = "--config", "config-d-parser.yaml"
 python -m smells.cli @c prepare        # dependency graph, package metrics, independent structural findings
 ```
 
-**1. Run the Designite baseline.** Write its output to `data/designite/<project>/`, then point `designite_csv` in the config at the architecture-smells CSV. Column names are matched loosely.
+**1. Run the Designite baseline.** The `designite:` section of the config holds the tool, the input and the output folder; `designite_csv` points at that folder (or at one CSV), and the architecture-smell CSV in it is found automatically. Column names are matched loosely.
 ```powershell
-java -jar tools\DesigniteJava.jar -i projects\commons-io\src\main\java -o data\designite\commons-io
-dotnet tools\DesigniteConsole\DesigniteConsole.dll -i projects\D_Parser\DParser2\DParser2.sln -o data\designite\D_Parser-windows
+python -m smells.cli @c designite            # runs Designite (C#: Windows only)
+python -m smells.cli @c designite --print    # only shows the command
 ```
-For C#, check that the output covers the whole project: about 25 namespaces for D_Parser. A near-empty result means the solution didn't load; installing Visual Studio Build Tools with ".NET desktop build tools" usually fixes it.
+The command it runs is the manual one: from the tool's folder, with absolute paths.
+```powershell
+cd tools\DesigniteConsole
+dotnet .\DesigniteConsole.dll -i "<repo>\projects\DParser2\DParser2.sln" -o "<repo>\data\designite\D_Parser-windows"
+```
+For C#, check that the output covers the whole project: about 25 namespaces for D_Parser. If no CSV appears, read the newest file in `tools\DesigniteConsole\Logs\`. "Could not find any project to analyze" means the solution didn't load; installing Visual Studio Build Tools with ".NET desktop build tools" usually fixes it.
 
 **2. Build the benchmark**
 ```powershell
@@ -77,6 +82,9 @@ Set `language: csharp` in the config to analyse C#. The steps above stay the sam
 - **No compiler is needed.** `prepare` resolves dependencies from source (`smells/csharp.py`) and writes them to `deps.txt`. Java uses `javac` + `jdeps`.
 - **The resolution is name-based**, not Roslyn, so cite it as a threat to validity. On D_Parser it found every namespace dependency that Designite reports. About 95% of its dependencies also appear in Designite; the rest are real references in the second file of partial classes.
 - **History (C3)** follows each namespace's files, because C# folders need not match namespaces.
+  C3/C4 need `project_root` to be a git clone that contains `release`. A plain copy of the sources
+  (like `projects/DParser2`) only supports C1/C2, and `prompt`/`run` refuse C3/C4 instead of silently sending no history.
+- `bin/`, `obj/` and `.vs/` are ignored when reading C# sources.
 
 ## Rules that keep the experiment valid
 

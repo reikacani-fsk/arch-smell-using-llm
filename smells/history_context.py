@@ -22,6 +22,24 @@ def _path_to_package(path: str, source_rels) -> str | None:
     return None
 
 
+def history_problem(project_root: Path, release: str, own_repo: Path) -> str | None:
+    """Why C3 history cannot be built, or None. Catches a project folder that is not its own clone
+    (git would silently use the enclosing repo, `own_repo`) and a `release` the clone does not contain."""
+    def git(*args):
+        r = subprocess.run(["git", "-C", str(project_root), *args], capture_output=True, text=True)
+        return r.stdout.strip() if r.returncode == 0 else None
+    top = git("rev-parse", "--show-toplevel")
+    if top is None:
+        return f"{project_root} is not a git repository."
+    own = subprocess.run(["git", "-C", str(own_repo), "rev-parse", "--show-toplevel"],
+                         capture_output=True, text=True).stdout.strip()
+    if own and Path(top).resolve() == Path(own).resolve():
+        return f"{project_root} is a plain folder inside this repository, not a clone of the analysed project."
+    if git("rev-parse", "--verify", "--quiet", f"{release}^{{commit}}") is None:
+        return f"release '{release}' is not a commit in {top}."
+    return None
+
+
 def package_history(project_root: Path, source_dirs, package: str, release: str, n: int,
                     index: dict | None = None) -> str:
     """Java: package = directory. C#: namespaces need not follow folders, so pass the source `index`

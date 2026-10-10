@@ -6,6 +6,10 @@ source_dirs: [src/main/java]
 classes_dir: target/classes                # relative to project_root
 package_prefix: org.apache.commons.io      # only packages under this prefix count
 
+designite:                 # `designite` command: java -jar DesigniteJava.jar -i <input> -o <output_dir>
+  tool: tools/DesigniteJava.jar
+  input: projects/commons-io/src/main/java
+  output_dir: data/designite/commons-io
 designite_csv: data/designite/commons-io/ArchitectureSmells.csv
 data_dir: data/commons-io
 

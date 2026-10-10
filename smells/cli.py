@@ -1,6 +1,7 @@
 """Command-line entry point:  python -m smells.cli --config config.yaml <command> [options]
 
   prepare      compile project (if needed), run jdeps (C#: resolve from source), build graph + findings
+  designite    run the Designite baseline (C#: Windows only; --print shows the command)
   crosscheck   compare Designite with the independent structural computation
   benchmark    create data/<project>/benchmark.csv (never overwrites manual labels unless --force)
   kappa        inter-rater agreement on the manually labelled rows
@@ -10,7 +11,9 @@
   evaluate     precision / recall / F1 per run, config, smell
 """
 import argparse
+import subprocess
 import sys
+import time
 
 import pandas as pd
 
@@ -46,6 +49,46 @@ def cmd_prepare(cfg, a):
     print(f"{class_g.number_of_nodes()} classes, {pkg_g.number_of_nodes()} packages, "
           f"{pkg_g.number_of_edges()} package edges")
     print(sf.groupby("smell").size().to_string() if len(sf) else "No structural findings.")
+
+
+def cmd_designite(cfg, a):
+    from .code_context import index_sources
+    from .designite import arch_smell_csvs, designite_command, load_architecture_smells
+    cmd, cwd, out = designite_command(cfg)
+    print(f"cd {cwd}\n{subprocess.list2cmdline(cmd)}")
+    if a.print:
+        return
+    if cfg.language == "csharp" and sys.platform != "win32":
+        sys.exit("Designite for C# runs only on Windows. Run this command there (--print shows it).")
+    out.mkdir(parents=True, exist_ok=True)
+    start = time.time()
+    rc = subprocess.run(cmd, cwd=cwd).returncode
+    csvs = [p for p in arch_smell_csvs(out) if p.stat().st_mtime >= start - 1]
+    if not csvs:
+        sys.exit(f"Designite (exit code {rc}) wrote no architecture-smell CSV to {out}. See the newest log in "
+                 f"{cwd / 'Logs'}: 'could not find any project' means the solution did not load "
+                 "(install Visual Studio Build Tools with '.NET desktop build tools').")
+    df = load_architecture_smells(out)
+    print(f"Designite: {len(df)} (package, smell) findings in {df.package.nunique()} packages "
+          f"from {', '.join(p.name for p in csvs)}")
+    print(df.groupby("smell").size().to_string())
+    n_src = sum(p.startswith(cfg["package_prefix"]) for p in index_sources(cfg.source_dirs, cfg.language))
+    print(f"The source has {n_src} packages under {cfg['package_prefix']}. Very few Designite findings "
+          "usually means the solution only partly loaded.")
+    if cfg.path("designite_csv") not in (out, *csvs):
+        print(f"NOTE: designite_csv in the config points to {cfg.path('designite_csv')}, not to {out}.")
+
+
+def _check_history(cfg, configs):
+    """C3/C4 without git history would silently equal C2 and invalidate the comparison."""
+    if not {"C3", "C4"} & set(configs):
+        return
+    from .history_context import history_problem
+    problem = history_problem(cfg.project_root, cfg["release"], cfg.base)
+    if problem:
+        sys.exit(f"C3/C4 need the project's git history, but {problem}\n"
+                 f"Clone the project into project_root and set `release` to the analysed commit, "
+                 f"or run only C1/C2.")
 
 
 def _tool_df(cfg, source):
@@ -101,6 +144,7 @@ def cmd_index(cfg, a):
 def cmd_prompt(cfg, a):
     from . import prompts
     from .runner import ContextBuilder
+    _check_history(cfg, [a.context])
     user = prompts.user_prompt(a.package, ContextBuilder(cfg).sections(a.package, a.context))
     system = prompts.system_prompt(cfg["smells"], cfg.language)
     print("=== SYSTEM ===\n" + system + "\n=== USER ===\n" + user)
@@ -110,6 +154,7 @@ def cmd_prompt(cfg, a):
 def cmd_run(cfg, a):
     from .llm import ClaudeClient, DryRunClient, RunLog
     from .runner import run_experiment
+    _check_history(cfg, a.configs)
     llm = cfg["llm"]
     client = DryRunClient() if a.dry_run else ClaudeClient(a.model or llm["model"], llm["max_tokens"],
                                                            llm.get("temperature"))
@@ -134,6 +179,8 @@ def main(argv=None):
     s = sub.add_parser("prepare")
     s.add_argument("--compile", action="store_true", help="force recompilation")
     s.add_argument("--javac", action="store_true", help="use plain javac instead of Maven")
+    s = sub.add_parser("designite")
+    s.add_argument("--print", action="store_true", help="only print the command")
     for name in ("crosscheck", "benchmark"):
         s = sub.add_parser(name)
         s.add_argument("--source", choices=["designite", "structural"], default="designite")

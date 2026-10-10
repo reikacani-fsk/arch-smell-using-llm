@@ -14,7 +14,8 @@ from smells.code_context import index_sources, package_code_context, package_siz
 from smells.config import Config
 from smells.csharp import class_graph
 from smells.depgraph import instability, package_graph, parse_jdeps
-from smells.designite import load_architecture_smells
+from smells.designite import arch_smell_csvs, designite_command, load_architecture_smells
+from smells.history_context import history_problem
 from smells.llm import ClaudeClient
 
 FIX = Path(__file__).parent / "fixtures"
@@ -60,6 +61,32 @@ def test_designite_parser():
     df = load_architecture_smells(FIX / "designite_ArchitectureSmells.csv")
     assert set(df.smell) == {"CyclicDependency", "FeatureConcentration"}
     assert len(df) == 3   # duplicate row removed
+
+
+def test_designite_output_folder_and_command(tmp_path):
+    out = tmp_path / "out"
+    (out / "DParser2").mkdir(parents=True)
+    shutil.copy(FIX / "designite_cs_ArchSmells.csv", out / "DParser2" / "Designite_DParser2_ArchSmells.csv")
+    (out / "Designite_DParser2_ClassMetrics.csv").write_text("x\n1\n")
+    assert [p.name for p in arch_smell_csvs(out)] == ["Designite_DParser2_ArchSmells.csv"]
+    assert len(load_architecture_smells(out)) == len(load_architecture_smells(FIX / "designite_cs_ArchSmells.csv"))
+
+    (tmp_path / "c.yaml").write_text("designite: {tool: tools/DC/DesigniteConsole.dll, "
+                                     "input: projects/P/P.sln, output_dir: out}\n")
+    cmd, cwd, o = designite_command(Config(tmp_path / "c.yaml"))
+    assert cmd == ["dotnet", "DesigniteConsole.dll", "-i", str(tmp_path / "projects/P/P.sln"), "-o", str(out)]
+    assert cwd == tmp_path / "tools/DC" and o == out
+
+
+def test_history_problem(cs_workspace):
+    repo = cs_workspace / "minirepo-cs"
+    assert history_problem(repo, "HEAD", cs_workspace) is None
+    assert "not a commit" in history_problem(repo, "0cdef0ec", cs_workspace)
+    assert "plain folder" in history_problem(repo / "src", "HEAD", repo)   # folder inside the own repo
+    cfgp = cs_workspace / "config.yaml"
+    cfgp.write_text(cfgp.read_text().replace("release: HEAD", "release: 0cdef0ec"))
+    with pytest.raises(SystemExit):                                       # C3 refuses to run without history
+        cli.main(["--config", str(cfgp), "run", "--dry-run", "--configs", "C1", "C3"])
 
 
 def test_parse_jdeps_text():
