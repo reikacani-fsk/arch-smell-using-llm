@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH="$PATH:/c/Program Files/GitHub CLI"
 # Screens new GitHub repos as candidates for architectural-smell analysis with Designite.
 # Usage:   bash scripts/screen.sh
 # Output:  data/screened.tsv  repos Designite can analyze (repo, namespaces, .csproj files, lines of C#, solution type),
