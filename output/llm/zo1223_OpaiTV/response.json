@@ -1,0 +1,226 @@
+{
+  "repo": "zo1223/OpaiTV",
+  "commit": "e137971afcca15d93b1c87f5eccd705bed82894c",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "usage": {
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "inference_geo": "global",
+    "input_tokens": 424420,
+    "output_tokens": 7458,
+    "output_tokens_details": {
+      "thinking_tokens": 2893
+    },
+    "server_tool_use": null,
+    "service_tier": "standard"
+  },
+  "smells": [
+    {
+      "smell": "God Component",
+      "project": "OrionTV.Desktop.Core",
+      "namespace": "OrionTV.Desktop.Core",
+      "description": "The whole Core project lives in a single namespace with about 70 types across roughly 20 files and several thousand lines of code. It holds VOD clients, catalog orchestration, live channel probing, translation protocols, local media, persistence, settings and AI prompt building.",
+      "participating_classes": [
+        "OrionTV.Desktop.Core.AppleCmsClient",
+        "OrionTV.Desktop.Core.AppleCmsUrlBuilder",
+        "OrionTV.Desktop.Core.AppleCmsEpisodeParser",
+        "OrionTV.Desktop.Core.AppleCmsMapper",
+        "OrionTV.Desktop.Core.SearchResultSources",
+        "OrionTV.Desktop.Core.CatalogService",
+        "OrionTV.Desktop.Core.CatalogPlayability",
+        "OrionTV.Desktop.Core.CatalogPlayabilityCache",
+        "OrionTV.Desktop.Core.ChannelHealthProbe",
+        "OrionTV.Desktop.Core.ChannelHealthScoring",
+        "OrionTV.Desktop.Core.DeepgramSttProtocol",
+        "OrionTV.Desktop.Core.DoubaoAstProtocol",
+        "OrionTV.Desktop.Core.GeminiLiveTranslateProtocol",
+        "OrionTV.Desktop.Core.RealtimeTranslationProtocol",
+        "OrionTV.Desktop.Core.DoubanClient",
+        "OrionTV.Desktop.Core.ExtraVideoSourcesStore",
+        "OrionTV.Desktop.Core.AiImportPromptBuilder",
+        "OrionTV.Desktop.Core.HlsAdSkip",
+        "OrionTV.Desktop.Core.HomeCategoryMatcher",
+        "OrionTV.Desktop.Core.VodSourceClientFactory",
+        "OrionTV.Desktop.Core.LocalMediaStore",
+        "OrionTV.Desktop.Core.LocalMediaNaming",
+        "OrionTV.Desktop.Core.JsonDictionaryStore",
+        "OrionTV.Desktop.Core.PlayRecordStore",
+        "OrionTV.Desktop.Core.FavoriteStore",
+        "OrionTV.Desktop.Core.M3uParser",
+        "OrionTV.Desktop.Core.MacCmsJsonClient",
+        "OrionTV.Desktop.Core.MacCmsXmlClient",
+        "OrionTV.Desktop.Core.SettingsStore",
+        "OrionTV.Desktop.Core.DesktopSettingsForm",
+        "OrionTV.Desktop.Core.VideoSourceSubscriptionParser",
+        "OrionTV.Desktop.Core.DesktopLiveSourceSettings"
+      ]
+    },
+    {
+      "smell": "Feature Concentration",
+      "project": "OrionTV.Desktop.Core",
+      "namespace": "OrionTV.Desktop.Core",
+      "description": "A single namespace implements several unrelated concerns whose classes never use each other. These are VOD source protocols and catalog aggregation, live-stream health probing, speech translation wire protocols (Deepgram, Doubao, Gemini, OpenAI), HLS ad skipping, the local media library, and AI CLI prompt generation.",
+      "participating_classes": [
+        "OrionTV.Desktop.Core.AppleCmsClient",
+        "OrionTV.Desktop.Core.MacCmsXmlClient",
+        "OrionTV.Desktop.Core.CatalogService",
+        "OrionTV.Desktop.Core.ChannelHealthProbe",
+        "OrionTV.Desktop.Core.DeepgramSttProtocol",
+        "OrionTV.Desktop.Core.DoubaoAstProtocol",
+        "OrionTV.Desktop.Core.GeminiLiveTranslateProtocol",
+        "OrionTV.Desktop.Core.RealtimeTranslationProtocol",
+        "OrionTV.Desktop.Core.HlsAdSkip",
+        "OrionTV.Desktop.Core.LocalMediaStore",
+        "OrionTV.Desktop.Core.AiImportPromptBuilder",
+        "OrionTV.Desktop.Core.M3uParser"
+      ]
+    },
+    {
+      "smell": "God Component",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App",
+      "description": "The root App namespace holds about 40 types and several thousand lines of code. Its largest classes are VodCacheService (around 1,500 lines), DesktopUpdateService, PlaybackController, AppServices, VodSourceHealthProbe and AiCliLauncher.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.AppServices",
+        "OrionTV.Desktop.App.MainWindow",
+        "OrionTV.Desktop.App.VodCacheService",
+        "OrionTV.Desktop.App.VodCacheSession",
+        "OrionTV.Desktop.App.VodDownloadManager",
+        "OrionTV.Desktop.App.DesktopUpdateService",
+        "OrionTV.Desktop.App.PlaybackController",
+        "OrionTV.Desktop.App.AiCliLauncher",
+        "OrionTV.Desktop.App.AiSourceWatcher",
+        "OrionTV.Desktop.App.HlsAesDecryptMerger",
+        "OrionTV.Desktop.App.ImageLoader",
+        "OrionTV.Desktop.App.LiveChannelViewModel",
+        "OrionTV.Desktop.App.LocalCachePlaybackCatalog",
+        "OrionTV.Desktop.App.OsdController",
+        "OrionTV.Desktop.App.PlayerKeyboardHook",
+        "OrionTV.Desktop.App.VodCacheLookup",
+        "OrionTV.Desktop.App.VodPlayableSourceResolver",
+        "OrionTV.Desktop.App.VodSourceHealthProbe",
+        "OrionTV.Desktop.App.LibVlcMediaDecodeProbe",
+        "OrionTV.Desktop.App.VodCacheLog"
+      ]
+    },
+    {
+      "smell": "Feature Concentration",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App",
+      "description": "The root namespace mixes independent features that do not use each other: GitHub self-update, AI CLI launching and file watching, the HLS download cache with its local HTTP server, LibVLC playback control, low-level keyboard hooking, remote image loading, and source health probing.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.DesktopUpdateService",
+        "OrionTV.Desktop.App.AiCliLauncher",
+        "OrionTV.Desktop.App.AiSourceWatcher",
+        "OrionTV.Desktop.App.VodCacheService",
+        "OrionTV.Desktop.App.VodDownloadManager",
+        "OrionTV.Desktop.App.PlaybackController",
+        "OrionTV.Desktop.App.PlayerKeyboardHook",
+        "OrionTV.Desktop.App.ImageLoader",
+        "OrionTV.Desktop.App.VodSourceHealthProbe"
+      ]
+    },
+    {
+      "smell": "Cyclic Dependency",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App",
+      "description": "Cycle OrionTV.Desktop.App -> OrionTV.Desktop.App.Views -> OrionTV.Desktop.App. MainWindow instantiates the views, and the views depend back on IAppHost, AppServices, PlayParameter, DetailParameter and PlaybackController in the root namespace.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.MainWindow",
+        "OrionTV.Desktop.App.IAppHost",
+        "OrionTV.Desktop.App.AppServices",
+        "OrionTV.Desktop.App.PlayParameter",
+        "OrionTV.Desktop.App.DetailParameter"
+      ]
+    },
+    {
+      "smell": "Cyclic Dependency",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App.Views",
+      "description": "Cycle OrionTV.Desktop.App.Views -> OrionTV.Desktop.App -> OrionTV.Desktop.App.Views. The views use root types (IAppHost, AppServices, PlaybackController, navigation parameters), while the root MainWindow creates the views.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.Views.HomeView",
+        "OrionTV.Desktop.App.Views.DetailView",
+        "OrionTV.Desktop.App.Views.PlayerView",
+        "OrionTV.Desktop.App.Views.LiveView",
+        "OrionTV.Desktop.App.Views.SearchView",
+        "OrionTV.Desktop.App.Views.FavoritesView",
+        "OrionTV.Desktop.App.Views.LocalVideoView",
+        "OrionTV.Desktop.App.Views.SettingsView",
+        "OrionTV.Desktop.App.Views.AiImportDialog"
+      ]
+    },
+    {
+      "smell": "Cyclic Dependency",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App.LocalPlayback",
+      "description": "Cycle OrionTV.Desktop.App.LocalPlayback -> OrionTV.Desktop.App -> OrionTV.Desktop.App.Views -> OrionTV.Desktop.App.LocalPlayback. MpvLocalEngine uses the root PlaybackState enum, MainWindow creates the views, and PlayerView and SettingsView use MpvLocalEngine and PotPlayerLauncher.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine",
+        "OrionTV.Desktop.App.LocalPlayback.PotPlayerLauncher",
+        "OrionTV.Desktop.App.MainWindow",
+        "OrionTV.Desktop.App.Views.PlayerView",
+        "OrionTV.Desktop.App.Views.SettingsView"
+      ]
+    },
+    {
+      "smell": "Cyclic Dependency",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App",
+      "description": "The root namespace also participates in the cycle OrionTV.Desktop.App -> OrionTV.Desktop.App.Views -> OrionTV.Desktop.App.LocalPlayback -> OrionTV.Desktop.App. MainWindow creates the views, and MpvLocalEngine uses the root PlaybackState enum.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.MainWindow",
+        "OrionTV.Desktop.App.PlaybackState"
+      ]
+    },
+    {
+      "smell": "Cyclic Dependency",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App.Views",
+      "description": "Views participates in the cycle OrionTV.Desktop.App.Views -> OrionTV.Desktop.App.LocalPlayback -> OrionTV.Desktop.App -> OrionTV.Desktop.App.Views. PlayerView uses MpvLocalEngine and SettingsView uses PotPlayerLauncher.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.Views.PlayerView",
+        "OrionTV.Desktop.App.Views.SettingsView"
+      ]
+    },
+    {
+      "smell": "Unstable Dependency",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App",
+      "description": "The root namespace has I = 1/(3+1) = 0.25; Views, Controls and LocalPlayback depend on it and it depends only on Views. It depends on OrionTV.Desktop.App.Views, which is less stable at I = 3/(1+3) = 0.75.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.MainWindow"
+      ]
+    },
+    {
+      "smell": "Scattered Functionality",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App.LiveTranslation",
+      "description": "Live-translation provider handling is spread across OrionTV.Desktop.App.LiveTranslation and OrionTV.Desktop.App.Views. LiveTranslationController resolves providers in LiveTranslation, while LiveView and SettingsView repeat the provider resolution, credential lookup and validation logic; Views also carries many unrelated page concerns.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.LiveTranslation.LiveTranslationController",
+        "OrionTV.Desktop.App.LiveTranslation.OpenAiCredentialStore",
+        "OrionTV.Desktop.App.Views.LiveView",
+        "OrionTV.Desktop.App.Views.SettingsView"
+      ]
+    },
+    {
+      "smell": "Scattered Functionality",
+      "project": "OrionTV.Desktop.App",
+      "namespace": "OrionTV.Desktop.App",
+      "description": "The media playback engine concern is split across OrionTV.Desktop.App (PlaybackController for LibVLC, alongside many unrelated services), OrionTV.Desktop.App.LocalPlayback (MpvLocalEngine, MpvHost, PotPlayerLauncher) and OrionTV.Desktop.App.Views. In Views, PlayerView switches between the engines and duplicates the volume, mute and seek routing.",
+      "participating_classes": [
+        "OrionTV.Desktop.App.PlaybackController",
+        "OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine",
+        "OrionTV.Desktop.App.LocalPlayback.MpvHost",
+        "OrionTV.Desktop.App.LocalPlayback.PotPlayerLauncher",
+        "OrionTV.Desktop.App.Views.PlayerView"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+repo,project,smell,designite,llm,difference,common_namespaces
+zo1223_OpaiTV,OrionTV.Desktop.App,Cyclic Dependency,2,5,3,1
+zo1223_OpaiTV,OrionTV.Desktop.App,Unstable Dependency,2,1,-1,1
+zo1223_OpaiTV,OrionTV.Desktop.App,God Component,1,1,0,1
+zo1223_OpaiTV,OrionTV.Desktop.App,Feature Concentration,2,1,-1,1
+zo1223_OpaiTV,OrionTV.Desktop.App,Scattered Functionality,5,2,-3,0
+zo1223_OpaiTV,OrionTV.Desktop.App,Dense Structure,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Core,Cyclic Dependency,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Core,Unstable Dependency,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Core,God Component,1,1,0,1
+zo1223_OpaiTV,OrionTV.Desktop.Core,Feature Concentration,0,1,1,0
+zo1223_OpaiTV,OrionTV.Desktop.Core,Scattered Functionality,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Core,Dense Structure,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Tests,Cyclic Dependency,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Tests,Unstable Dependency,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Tests,God Component,1,0,-1,0
+zo1223_OpaiTV,OrionTV.Desktop.Tests,Feature Concentration,1,0,-1,0
+zo1223_OpaiTV,OrionTV.Desktop.Tests,Scattered Functionality,0,0,0,0
+zo1223_OpaiTV,OrionTV.Desktop.Tests,Dense Structure,0,0,0,0
