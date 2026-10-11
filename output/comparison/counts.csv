@@ -1,4 +1,4 @@
-repo,project,smell,designite,llm,difference,common_namespaces
+repo,project,smell,designite,0shot,0shot_difference,0shot_common_namespaces
 zo1223_OpaiTV,OrionTV.Desktop.App,Cyclic Dependency,2,5,3,1
 zo1223_OpaiTV,OrionTV.Desktop.App,Unstable Dependency,2,1,-1,1
 zo1223_OpaiTV,OrionTV.Desktop.App,Ambiguous Interface,0,0,0,0

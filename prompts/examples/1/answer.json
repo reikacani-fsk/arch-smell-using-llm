@@ -1,0 +1,63 @@
+{
+  "smells": [
+    {
+      "smell": "Cyclic Dependency",
+      "project": "Shop.Core",
+      "namespace": "Shop.Core.Orders",
+      "description": "Cycle Shop.Core.Orders -> Shop.Core.Billing -> Shop.Core.Orders: OrderService uses InvoiceService and Invoice, while Invoice and InvoiceService use Order.",
+      "participating_classes": ["Shop.Core.Orders.OrderService", "Shop.Core.Billing.Invoice", "Shop.Core.Billing.InvoiceService"]
+    },
+    {
+      "smell": "Unstable Dependency",
+      "project": "Shop.Core",
+      "namespace": "Shop.Core.Billing",
+      "description": "Shop.Core.Billing (I = 2/3: depends on Orders and Common, used by Orders) depends on the less stable Shop.Core.Orders (I = 3/4: depends on Billing, Common and Customers, used by Billing).",
+      "participating_classes": ["Shop.Core.Billing.Invoice", "Shop.Core.Billing.InvoiceService"]
+    },
+    {
+      "smell": "Feature Concentration",
+      "project": "Shop.Core",
+      "namespace": "Shop.Core.Common",
+      "description": "Shop.Core.Common realizes three unrelated features whose classes do not use each other: e-mail sending [EmailSender, SmtpSettings], CSV export [CsvExporter, CsvOptions] and checksums [Crc32].",
+      "participating_classes": ["Shop.Core.Common.EmailSender", "Shop.Core.Common.SmtpSettings", "Shop.Core.Common.CsvExporter", "Shop.Core.Common.CsvOptions", "Shop.Core.Common.Crc32"]
+    },
+    {
+      "smell": "Scattered Functionality",
+      "project": "Clinic.App",
+      "namespace": "Clinic.App.Patients",
+      "description": "The audit-logging concern is realized separately in Clinic.App.Patients, Clinic.App.Appointments and Clinic.App.Reports, each of which is also responsible for its own concern (patient registration, booking, reporting).",
+      "participating_classes": ["Clinic.App.Patients.PatientAudit", "Clinic.App.Appointments.AppointmentAudit", "Clinic.App.Reports.ReportAudit"]
+    },
+    {
+      "smell": "Ambiguous Interface",
+      "project": "Clinic.App",
+      "namespace": "Clinic.App.Integration",
+      "description": "Clinic.App.Integration offers a single, general entry point: MessageGateway.Handle(string command, object payload) dispatches on a command string, so its services (register, find, book) are hidden from its interface.",
+      "participating_classes": ["Clinic.App.Integration.MessageGateway"]
+    },
+    {
+      "smell": "God Component",
+      "project": "Geometry",
+      "namespace": "Geometry.Shapes",
+      "description": "Geometry.Shapes contains 32 classes in a single component: IShape, RegularPolygon, 18 regular polygons and 12 other shapes.",
+      "participating_classes": [
+        "Geometry.Shapes.IShape", "Geometry.Shapes.RegularPolygon",
+        "Geometry.Shapes.Triangle", "Geometry.Shapes.Square", "Geometry.Shapes.Pentagon", "Geometry.Shapes.Hexagon",
+        "Geometry.Shapes.Heptagon", "Geometry.Shapes.Octagon", "Geometry.Shapes.Nonagon", "Geometry.Shapes.Decagon",
+        "Geometry.Shapes.Hendecagon", "Geometry.Shapes.Dodecagon", "Geometry.Shapes.Tridecagon", "Geometry.Shapes.Tetradecagon",
+        "Geometry.Shapes.Pentadecagon", "Geometry.Shapes.Hexadecagon", "Geometry.Shapes.Heptadecagon", "Geometry.Shapes.Octadecagon",
+        "Geometry.Shapes.Enneadecagon", "Geometry.Shapes.Icosagon",
+        "Geometry.Shapes.Circle", "Geometry.Shapes.Semicircle", "Geometry.Shapes.Sector", "Geometry.Shapes.Annulus",
+        "Geometry.Shapes.Ellipse", "Geometry.Shapes.Rectangle", "Geometry.Shapes.Parallelogram", "Geometry.Shapes.Rhombus",
+        "Geometry.Shapes.Kite", "Geometry.Shapes.Trapezoid", "Geometry.Shapes.RightTriangle", "Geometry.Shapes.IsoscelesTriangle"
+      ]
+    },
+    {
+      "smell": "Dense Structure",
+      "project": "Warehouse",
+      "namespace": "<All namespaces included>",
+      "description": "Every component depends on every component below it (Api -> Orders -> Shipping -> Stock -> Pricing -> Data and all shortcuts): 15 dependencies among 6 components, average degree 5, so there is no layering.",
+      "participating_classes": ["Warehouse.Api.WarehouseController", "Warehouse.Orders.OrderHandler", "Warehouse.Shipping.Shipper", "Warehouse.Stock.StockLedger", "Warehouse.Pricing.PriceList", "Warehouse.Data.Database"]
+    }
+  ]
+}

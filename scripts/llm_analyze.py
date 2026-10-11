@@ -1,15 +1,16 @@
 """Asks an LLM to detect the architectural smells of each repo in repos/ (same code version and projects as Designite).
 The LLM gets every .cs file of the C# projects in the .sln closest to the repo root, and prompts/arch_smells.md as system prompt.
+With --shots N it first sees the N worked examples in prompts/examples/1..N (code as a user turn, answer.json as reply).
 Needs:   repos cloned by scripts/analyze.sh, pip install -r requirements.txt, and ANTHROPIC_API_KEY in .env (see .env-example)
-Usage:   python scripts/llm_analyze.py                      all repos with Designite results
-         python scripts/llm_analyze.py owner/repo [...]     only the given repos
-Output:  output/llm/<owner>_<repo>/ArchSmells.csv   one row per smell instance, like Designite's *_ArchSmells.csv
-         output/llm/<owner>_<repo>/response.json    model, token usage and the raw answer
+Usage:   python scripts/llm_analyze.py [--shots N]                      all repos with Designite results (default N = 0)
+         python scripts/llm_analyze.py [--shots N] owner/repo [...]     only the given repos
+Output:  output/llm/<N>shot/<owner>_<repo>/ArchSmells.csv   one row per smell instance, like Designite's *_ArchSmells.csv
+         output/llm/<N>shot/<owner>_<repo>/response.json    model, shots, token usage and the raw answer
 """
+import argparse
 import csv
 import json
 import re
-import sys
 from pathlib import Path
 
 import anthropic
@@ -23,6 +24,7 @@ EFFORT = "high"
 SMELLS = ["Cyclic Dependency", "Unstable Dependency", "Ambiguous Interface", "God Component",
           "Feature Concentration", "Scattered Functionality", "Dense Structure"]
 SYSTEM = (ROOT / "prompts" / "arch_smells.md").read_text(encoding="utf-8")
+EXAMPLES = sorted((p for p in (ROOT / "prompts" / "examples").iterdir() if p.is_dir()), key=lambda p: int(p.name))
 
 
 def projects(repo_dir):
@@ -53,6 +55,16 @@ def prompt(repo_dir, project_files):
     return "\n".join(parts)
 
 
+def messages(repo_dir, project_files, shots):
+    """The first `shots` examples as user/assistant turns (each project is a folder of the example), then the repo."""
+    turns = []
+    for example in EXAMPLES[:shots]:
+        example_files = {p.name: sorted(p.rglob("*.cs")) for p in sorted(example.iterdir()) if p.is_dir()}
+        turns += [{"role": "user", "content": prompt(example, example_files)},
+                  {"role": "assistant", "content": (example / "answer.json").read_text(encoding="utf-8")}]
+    return turns + [{"role": "user", "content": prompt(repo_dir, project_files)}]
+
+
 def schema(project_names):
     instance = {
         "type": "object",
@@ -70,12 +82,12 @@ def schema(project_names):
             "properties": {"smells": {"type": "array", "items": instance}}}
 
 
-def analyze(client, repo_dir, project_files):
+def analyze(client, repo_dir, project_files, shots):
     with client.messages.stream(
         model=MODEL,
         max_tokens=64000,
         system=SYSTEM,
-        messages=[{"role": "user", "content": prompt(repo_dir, project_files)}],
+        messages=messages(repo_dir, project_files, shots),
         thinking={"type": "adaptive"},
         output_config={"effort": EFFORT,
                        "format": {"type": "json_schema", "schema": schema(list(project_files))}},
@@ -86,7 +98,7 @@ def analyze(client, repo_dir, project_files):
     return message, json.loads(next(b.text for b in message.content if b.type == "text"))["smells"]
 
 
-def main(selected):
+def main(selected, shots):
     with open(ROOT / "data" / "subjects.csv", newline="") as f:
         subjects = list(csv.DictReader(f))
     for r in selected:
@@ -112,12 +124,12 @@ def main(selected):
         print(f"    {len(project_files)} projects, {sum(map(len, project_files.values()))} .cs files")
 
         try:
-            message, smells = analyze(client, repo_dir, project_files)
+            message, smells = analyze(client, repo_dir, project_files, shots)
         except (anthropic.APIError, RuntimeError) as e:
             print(f"    LLM failed: {e}")
             continue
 
-        out = OUT / name
+        out = OUT / f"{shots}shot" / name
         out.mkdir(parents=True, exist_ok=True)
         with open(out / "ArchSmells.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
@@ -126,10 +138,15 @@ def main(selected):
                 w.writerow([i["smell"], i["project"], i["namespace"], i["description"],
                             "; ".join(i["participating_classes"])])
         (out / "response.json").write_text(json.dumps(
-            {"repo": s["repo"], "commit": s["commit"], "model": message.model, "effort": EFFORT,
+            {"repo": s["repo"], "commit": s["commit"], "model": message.model, "effort": EFFORT, "shots": shots,
              "usage": message.usage.model_dump(), "smells": smells}, indent=2), encoding="utf-8")
-        print(f"    {len(smells)} smells -> output/llm/{name}/")
+        print(f"    {len(smells)} smells -> {out.relative_to(ROOT).as_posix()}/")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("repos", nargs="*", help="owner/repo as in data/subjects.csv (default: all with Designite results)")
+    parser.add_argument("--shots", type=int, default=0, choices=range(len(EXAMPLES) + 1),
+                        help="number of worked examples from prompts/examples/ shown before the repo")
+    args = parser.parse_args()
+    main(args.repos, args.shots)

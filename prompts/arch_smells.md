@@ -11,7 +11,7 @@ You are an expert software architect. You will receive the complete source code 
 
 ## Cyclic Dependency
 A component is involved in a chain of dependencies that breaks the desirable acyclic structure of the dependency graph, i.e. A → B → … → A. Components in a cycle cannot be understood, tested, reused or released in isolation, and a change to one can ripple around the whole cycle.
-Report one instance per component per distinct cycle it belongs to. Participating classes: the classes of the cycle's components that create the dependencies forming the cycle.
+Report one instance per distinct cycle (A → B → A and B → A → B are the same cycle). As the namespace, use one of the cycle's components, and name all components of the cycle in the description. Participating classes: the classes that create the dependencies forming the cycle.
 
 ## Unstable Dependency
 A component depends on other components that are less stable than itself. Stability is measured with instability I = Ce / (Ca + Ce), where Ce is the number of components it depends on (efferent coupling) and Ca the number of components that depend on it (afferent coupling). I = 0 is maximally stable (hard to change because many depend on it), and I = 1 is maximally unstable. Depending on something less stable than yourself means that frequent changes in the dependency ripple into a component that many others rely on.
@@ -31,7 +31,7 @@ Report one instance per affected component. Participating classes: the classes t
 
 ## Scattered Functionality
 Several components are responsible for realising the same high-level concern, and some of those components are also responsible for other, orthogonal concerns. A concern is a role, responsibility, concept or purpose of the system. Changing that concern requires changes in many components.
-Report one instance per scattered concern. As the namespace, use the component most responsible for the concern, and name all the involved components in the description. Participating classes: the classes that realise the concern.
+Report one instance per scattered concern. As the namespace, use one of the involved components, and name all of them in the description. Participating classes: the classes that realise the concern.
 
 ## Dense Structure
 The components of a project have excessive and dense dependencies without any particular structure, i.e. without following a recognisable architectural design. It occurs when the density of the dependency graph (number of dependencies divided by number of components) is high.

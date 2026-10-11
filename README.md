@@ -56,27 +56,47 @@ Designite runs again without it (shown as `done (without restore)`).
 ## LLM analysis and comparison
 
 ```bash
-python scripts/llm_analyze.py                    # all repos with Designite results
-python scripts/llm_analyze.py zo1223/OpaiTV      # only the given repos
+python scripts/llm_analyze.py                              # 0-shot, all repos with Designite results
+python scripts/llm_analyze.py --shots 1 zo1223/OpaiTV      # 1-shot, only the given repos
 python scripts/compare.py
 ```
 
 `llm_analyze.py` uses the repos already cloned in `repos/` by step 2. It gives the
 LLM the same input as Designite: every `.cs` file (without `bin/` and `obj/`) of
 the C# projects in the `.sln` closest to the repo root. The system prompt
-(`prompts/arch_smells.md`) defines the seven architecture smells Designite detects: Cyclic Dependency,
-Unstable Dependency, Ambiguous Interface, God Component, Feature Concentration,
-Scattered Functionality and Dense Structure. The model and effort are set at the top of the script. The
-LLM answers in a fixed JSON format, which is saved as
-`output/llm/<owner>_<repo>/ArchSmells.csv`. That file has the same columns as
-Designite's `*_ArchSmells.csv`: smell, project, namespace, description and
-participating classes. The model, token usage and raw answer are saved in
-`response.json` next to it.
+(`prompts/arch_smells.md`) defines the seven architecture smells Designite
+detects: Cyclic Dependency, Unstable Dependency, Ambiguous Interface, God
+Component, Feature Concentration, Scattered Functionality and Dense Structure.
+The model and effort are set at the top of the script.
 
-`compare.py` reads both results for every repo that has them and writes:
+`--shots N` (default 0) shows the LLM N worked examples before the repo. Each
+example is one earlier exchange: its code as the user turn and its correct
+answer as the reply. Examples are in `prompts/examples/<n>/`: one folder per
+C# project with its `.cs` files, plus `answer.json` with the expected smells.
+Example 1 has four short projects that together contain every smell:
+
+| Project      | Smells                                                         |
+|--------------|----------------------------------------------------------------|
+| `Shop.Core`  | Cyclic Dependency, Unstable Dependency, Feature Concentration  |
+| `Clinic.App` | Scattered Functionality, Ambiguous Interface                   |
+| `Geometry`   | God Component                                                  |
+| `Warehouse`  | Dense Structure                                                |
+
+To allow more shots, add `prompts/examples/2/` with the same layout.
+
+The LLM answers in a fixed JSON format, which is saved as
+`output/llm/<N>shot/<owner>_<repo>/ArchSmells.csv`. That file has the same
+columns as Designite's `*_ArchSmells.csv`: smell, project, namespace,
+description and participating classes. The model, number of shots, token usage
+and raw answer are saved in `response.json` next to it.
+
+`compare.py` reads Designite and every prompt variant (`0shot`, `1shot`, ...)
+for each repo and writes:
 
 - `output/comparison/counts.csv`: for each repo, project and smell, the number
-  of instances found by Designite and by the LLM, their difference
-  (llm - designite), and how many namespaces both flagged for that smell
-- `output/comparison/instances.csv`: every instance found by either tool, one
-  row each, with a `tool` column
+  of instances found by Designite. For each variant it adds the number found by
+  the LLM, the difference (llm - designite), and how many namespaces both
+  flagged for that smell. A variant's cells are empty if it has no result for
+  the repo.
+- `output/comparison/instances.csv`: every instance found by Designite or a
+  variant, one row each, with a `tool` column (`designite`, `0shot`, `1shot`, ...)
