@@ -20,7 +20,7 @@ load_dotenv(ROOT / ".env")
 OUT = ROOT / "output" / "llm"
 MODEL = "claude-opus-5-5"
 EFFORT = "high"
-SMELLS = ["Cyclic Dependency", "Unstable Dependency", "God Component",
+SMELLS = ["Cyclic Dependency", "Unstable Dependency", "Ambiguous Interface", "God Component",
           "Feature Concentration", "Scattered Functionality", "Dense Structure"]
 SYSTEM = (ROOT / "prompts" / "arch_smells.md").read_text(encoding="utf-8")
 

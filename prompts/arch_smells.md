@@ -17,6 +17,10 @@ Report one instance per component per distinct cycle it belongs to. Participatin
 A component depends on other components that are less stable than itself. Stability is measured with instability I = Ce / (Ca + Ce), where Ce is the number of components it depends on (efferent coupling) and Ca the number of components that depend on it (afferent coupling). I = 0 is maximally stable (hard to change because many depend on it), and I = 1 is maximally unstable. Depending on something less stable than yourself means that frequent changes in the dependency ripple into a component that many others rely on.
 Report one instance per affected component. Participating classes: the classes of the component that depend on the less stable components.
 
+## Ambiguous Interface
+A component offers only a single, general entry point to the rest of the system. For example, one public class with one public method that takes a generic parameter (an `object`, a string command or an event) and dispatches internally on it. The services the component really provides cannot be seen from its interface, so clients have to read its implementation to know how to use it, and its dependencies are hidden.
+Report one instance per affected component. Participating classes: the class that provides the entry point.
+
 ## God Component
 A component is excessively large, either in lines of code or in number of classes. It concentrates too much of the system, so it is hard to understand, change and reuse, and it usually lacks a single clear responsibility.
 Report one instance per affected component. Participating classes: the classes of the component.

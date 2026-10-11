@@ -64,9 +64,9 @@ python scripts/compare.py
 `llm_analyze.py` uses the repos already cloned in `repos/` by step 2. It gives the
 LLM the same input as Designite: every `.cs` file (without `bin/` and `obj/`) of
 the C# projects in the `.sln` closest to the repo root. The system prompt
-(`prompts/arch_smells.md`) defines the six smells: Cyclic Dependency, Unstable
-Dependency, God Component, Feature Concentration, Scattered Functionality and
-Dense Structure. The model and effort are set at the top of the script. The
+(`prompts/arch_smells.md`) defines the seven architecture smells Designite detects: Cyclic Dependency,
+Unstable Dependency, Ambiguous Interface, God Component, Feature Concentration,
+Scattered Functionality and Dense Structure. The model and effort are set at the top of the script. The
 LLM answers in a fixed JSON format, which is saved as
 `output/llm/<owner>_<repo>/ArchSmells.csv`. That file has the same columns as
 Designite's `*_ArchSmells.csv`: smell, project, namespace, description and
@@ -80,5 +80,3 @@ participating classes. The model, token usage and raw answer are saved in
   (llm - designite), and how many namespaces both flagged for that smell
 - `output/comparison/instances.csv`: every instance found by either tool, one
   row each, with a `tool` column
-
-Designite's Ambiguous Interface smell is not part of the comparison.

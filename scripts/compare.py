@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DESIGNITE = ROOT / "output" / "designite"
 LLM = ROOT / "output" / "llm"
 OUT = ROOT / "output" / "comparison"
-SMELLS = ["Cyclic Dependency", "Unstable Dependency", "God Component",
+SMELLS = ["Cyclic Dependency", "Unstable Dependency", "Ambiguous Interface", "God Component",
           "Feature Concentration", "Scattered Functionality", "Dense Structure"]
 
 
