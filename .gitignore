@@ -5,3 +5,4 @@ __pycache__/
 tools/*
 .DS_Store
 repos/**
+.env
