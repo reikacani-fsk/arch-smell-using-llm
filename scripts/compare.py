@@ -1,8 +1,8 @@
-"""Puts the architectural smells found by Designite and by each LLM prompt variant (output/llm/<N>shot/) side by side,
+"""Puts the architectural smells found by Designite and by each LLM prompt variant (output/llm/<N>shot/, output/llm/history/) side by side,
 for every repo that has Designite results and at least one LLM result.
 Usage:   python scripts/compare.py
 Output:  output/comparison/counts.csv      per repo, project and smell: number of instances found by Designite, and for each
-                                           variant (0shot, 1shot, ...) the number found by the LLM, the difference
+                                           variant (0shot, 1shot, ..., history) the number found by the LLM, the difference
                                            (llm - designite) and the number of namespaces flagged by both
                                            (empty when that variant has no result for the repo)
          output/comparison/instances.csv  every smell instance found by Designite or an LLM variant, one row each

@@ -59,6 +59,7 @@ Designite runs again without it (shown as `done (without restore)`).
 python scripts/llm_analyze.py                              # 0-shot, all repos with Designite results
 python scripts/llm_analyze.py --shots 1 zo1223/OpaiTV      # 1-shot, only the given repos
 python scripts/llm_analyze.py --shots 2 zo1223/OpaiTV      # 2-shot: examples 1 and 2
+python scripts/llm_analyze.py --history kangarooking/Ta    # 0-shot + git history, only the given repos
 python scripts/compare.py
 ```
 
@@ -94,14 +95,31 @@ example 1 does not show:
 
 To allow more shots, add `prompts/examples/3/` with the same layout.
 
+`--history` adds a summary of the repo's git history to the prompt, after the
+code (built by `scripts/history.py`). It is a separate context variant that is
+compared with the 0-shot code-only baseline, so it cannot be combined with
+`--shots`, and the repos must be given. The summary only uses commits up to the
+analyzed commit in `data/subjects.csv`, and counts only commits (without merges)
+that change the `.cs` files the LLM sees. Changes are grouped by component
+(`project/namespace`, the unit Designite reports smells for):
+
+- how many commits changed each component and each file (churn)
+- which components changed in the same commits (co-change). Commits with more
+  than 30 files, such as an initial import, are left out of this list.
+
+Repos with fewer than 10 such commits are skipped (`MIN_COMMITS` in
+`llm_analyze.py`), since they have too little history. Results go to
+`output/llm/history/<owner>_<repo>/`, with the summary the LLM got saved as
+`history.md`.
+
 The LLM answers in a fixed JSON format, which is saved as
 `output/llm/<N>shot/<owner>_<repo>/ArchSmells.csv`. That file has the same
 columns as Designite's `*_ArchSmells.csv`: smell, project, namespace,
 description and participating classes. The model, number of shots, token usage
 and raw answer are saved in `response.json` next to it.
 
-`compare.py` reads Designite and every prompt variant (`0shot`, `1shot`, ...)
-for each repo and writes:
+`compare.py` reads Designite and every prompt variant (`0shot`, `1shot`, ...,
+`history`) for each repo and writes:
 
 - `output/comparison/counts.csv`: for each repo, project and smell, the number
   of instances found by Designite. For each variant it adds the number found by

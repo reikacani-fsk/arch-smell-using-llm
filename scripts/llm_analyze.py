@@ -1,11 +1,14 @@
 """Asks an LLM to detect the architectural smells of each repo in repos/ (same code version and projects as Designite).
 The LLM gets every .cs file of the C# projects in the .sln closest to the repo root, and prompts/arch_smells.md as system prompt.
 With --shots N it first sees the N worked examples in prompts/examples/1..N (code as a user turn, answer.json as reply).
+With --history it also gets a summary of the repo's git history up to the analyzed commit (see history.py), 0-shot only.
 Needs:   repos cloned by scripts/analyze.sh, pip install -r requirements.txt, and ANTHROPIC_API_KEY in .env (see .env-example)
 Usage:   python scripts/llm_analyze.py [--shots N]                      all repos with Designite results (default N = 0)
          python scripts/llm_analyze.py [--shots N] owner/repo [...]     only the given repos
+         python scripts/llm_analyze.py --history owner/repo [...]       code + git history, only the given repos
 Output:  output/llm/<N>shot/<owner>_<repo>/ArchSmells.csv   one row per smell instance, like Designite's *_ArchSmells.csv
          output/llm/<N>shot/<owner>_<repo>/response.json    model, shots, token usage and the raw answer
+         output/llm/history/<owner>_<repo>/                 the same for --history, plus history.md (the summary given)
 """
 import argparse
 import csv
@@ -16,6 +19,8 @@ from pathlib import Path
 import anthropic
 from dotenv import load_dotenv
 
+import history
+
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 OUT = ROOT / "output" / "llm"
@@ -23,6 +28,7 @@ MODEL = "claude-opus-5-5"
 EFFORT = "high"
 SMELLS = ["Cyclic Dependency", "Unstable Dependency", "Ambiguous Interface", "God Component",
           "Feature Concentration", "Scattered Functionality", "Dense Structure"]
+MIN_COMMITS = 10  # --history skips repos with fewer commits changing the analyzed files
 SYSTEM = (ROOT / "prompts" / "arch_smells.md").read_text(encoding="utf-8")
 EXAMPLES = sorted((p for p in (ROOT / "prompts" / "examples").iterdir() if p.is_dir()), key=lambda p: int(p.name))
 
@@ -43,7 +49,7 @@ def projects(repo_dir):
     return result
 
 
-def prompt(repo_dir, project_files):
+def prompt(repo_dir, project_files, history_text=""):
     parts = []
     for name, files in project_files.items():
         parts.append(f'<project name="{name}">')
@@ -51,18 +57,20 @@ def prompt(repo_dir, project_files):
             code = f.read_text(encoding="utf-8-sig", errors="replace")
             parts.append(f'<file path="{f.relative_to(repo_dir).as_posix()}">\n{code}\n</file>')
         parts.append("</project>")
+    if history_text:
+        parts.append(history_text)
     parts.append(f"Detect the architectural smells in the C# projects above: {', '.join(project_files)}.")
     return "\n".join(parts)
 
 
-def messages(repo_dir, project_files, shots):
+def messages(repo_dir, project_files, shots, history_text=""):
     """The first `shots` examples as user/assistant turns (each project is a folder of the example), then the repo."""
     turns = []
     for example in EXAMPLES[:shots]:
         example_files = {p.name: sorted(p.rglob("*.cs")) for p in sorted(example.iterdir()) if p.is_dir()}
         turns += [{"role": "user", "content": prompt(example, example_files)},
                   {"role": "assistant", "content": (example / "answer.json").read_text(encoding="utf-8")}]
-    return turns + [{"role": "user", "content": prompt(repo_dir, project_files)}]
+    return turns + [{"role": "user", "content": prompt(repo_dir, project_files, history_text)}]
 
 
 def schema(project_names):
@@ -82,12 +90,12 @@ def schema(project_names):
             "properties": {"smells": {"type": "array", "items": instance}}}
 
 
-def analyze(client, repo_dir, project_files, shots):
+def analyze(client, repo_dir, project_files, shots, history_text=""):
     with client.messages.stream(
         model=MODEL,
         max_tokens=64000,
         system=SYSTEM,
-        messages=messages(repo_dir, project_files, shots),
+        messages=messages(repo_dir, project_files, shots, history_text),
         thinking={"type": "adaptive"},
         output_config={"effort": EFFORT,
                        "format": {"type": "json_schema", "schema": schema(list(project_files))}},
@@ -98,7 +106,7 @@ def analyze(client, repo_dir, project_files, shots):
     return message, json.loads(next(b.text for b in message.content if b.type == "text"))["smells"]
 
 
-def main(selected, shots):
+def main(selected, shots, with_history):
     with open(ROOT / "data" / "subjects.csv", newline="") as f:
         subjects = list(csv.DictReader(f))
     for r in selected:
@@ -123,14 +131,24 @@ def main(selected, shots):
             continue
         print(f"    {len(project_files)} projects, {sum(map(len, project_files.values()))} .cs files")
 
+        history_text = ""
+        if with_history:
+            history_text, n_commits = history.summary(repo_dir, s["commit"], project_files)
+            if n_commits < MIN_COMMITS:
+                print(f"    only {n_commits} commits change the analyzed files (< {MIN_COMMITS}), skipped")
+                continue
+            print(f"    history: {n_commits} commits")
+
         try:
-            message, smells = analyze(client, repo_dir, project_files, shots)
+            message, smells = analyze(client, repo_dir, project_files, shots, history_text)
         except (anthropic.APIError, RuntimeError) as e:
             print(f"    LLM failed: {e}")
             continue
 
-        out = OUT / f"{shots}shot" / name
+        out = OUT / ("history" if with_history else f"{shots}shot") / name
         out.mkdir(parents=True, exist_ok=True)
+        if with_history:
+            (out / "history.md").write_text(history_text + "\n", encoding="utf-8")
         with open(out / "ArchSmells.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["Smell", "Project", "Namespace", "Description", "Participating classes"])
@@ -139,7 +157,7 @@ def main(selected, shots):
                             "; ".join(i["participating_classes"])])
         (out / "response.json").write_text(json.dumps(
             {"repo": s["repo"], "commit": s["commit"], "model": message.model, "effort": EFFORT, "shots": shots,
-             "usage": message.usage.model_dump(), "smells": smells}, indent=2), encoding="utf-8")
+             "history": with_history, "usage": message.usage.model_dump(), "smells": smells}, indent=2), encoding="utf-8")
         print(f"    {len(smells)} smells -> {out.relative_to(ROOT).as_posix()}/")
 
 
@@ -148,5 +166,11 @@ if __name__ == "__main__":
     parser.add_argument("repos", nargs="*", help="owner/repo as in data/subjects.csv (default: all with Designite results)")
     parser.add_argument("--shots", type=int, default=0, choices=range(len(EXAMPLES) + 1),
                         help="number of worked examples from prompts/examples/ shown before the repo")
+    parser.add_argument("--history", action="store_true",
+                        help="also give the LLM a summary of the git history (0-shot only, repos must be given)")
     args = parser.parse_args()
-    main(args.repos, args.shots)
+    if args.history and args.shots:
+        parser.error("--history is compared with the 0-shot baseline and cannot be combined with --shots")
+    if args.history and not args.repos:
+        parser.error("--history needs the repos to analyze, e.g. --history zo1223/OpaiTV")
+    main(args.repos, args.shots, args.history)
