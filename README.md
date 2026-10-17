@@ -58,6 +58,7 @@ Designite runs again without it (shown as `done (without restore)`).
 ```bash
 python scripts/llm_analyze.py                              # 0-shot, all repos with Designite results
 python scripts/llm_analyze.py --shots 1 zo1223/OpaiTV      # 1-shot, only the given repos
+python scripts/llm_analyze.py --shots 2 zo1223/OpaiTV      # 2-shot: examples 1 and 2
 python scripts/compare.py
 ```
 
@@ -82,7 +83,16 @@ Example 1 has four short projects that together contain every smell:
 | `Geometry`   | God Component                                                  |
 | `Warehouse`  | Dense Structure                                                |
 
-To allow more shots, add `prompts/examples/2/` with the same layout.
+Example 2 is a small library system with three projects. It covers cases that
+example 1 does not show:
+
+| Project           | Smells                                                                                                                                          |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Library.Desktop` | two overlapping Cyclic Dependencies (a 2-cycle and a 3-cycle), Unstable Dependency, Feature Concentration in a namespace of pages that do not use each other |
+| `Library.Core`    | Scattered Functionality (a cache implemented twice); `Library.Core.Loans` has several concerns but its classes are connected, so it has no Feature Concentration |
+| `Library.Tests`   | God Component and Feature Concentration in a test project (32 classes in 10 independent groups)                                                |
+
+To allow more shots, add `prompts/examples/3/` with the same layout.
 
 The LLM answers in a fixed JSON format, which is saved as
 `output/llm/<N>shot/<owner>_<repo>/ArchSmells.csv`. That file has the same

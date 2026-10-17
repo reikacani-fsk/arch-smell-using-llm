@@ -1,0 +1,71 @@
+{
+  "smells": [
+    {
+      "smell": "Cyclic Dependency",
+      "project": "Library.Desktop",
+      "namespace": "Library.Desktop",
+      "description": "Cycle Library.Desktop -> Library.Desktop.Pages -> Library.Desktop: AppHost creates SearchPage, LoansPage, AccountPage and ListenPage, and every page uses INavigator from Library.Desktop.",
+      "participating_classes": ["Library.Desktop.AppHost", "Library.Desktop.Pages.SearchPage", "Library.Desktop.Pages.LoansPage", "Library.Desktop.Pages.AccountPage", "Library.Desktop.Pages.ListenPage"]
+    },
+    {
+      "smell": "Cyclic Dependency",
+      "project": "Library.Desktop",
+      "namespace": "Library.Desktop",
+      "description": "Cycle Library.Desktop -> Library.Desktop.Pages -> Library.Desktop.Media -> Library.Desktop, distinct from the two-component cycle: AppHost creates ListenPage, ListenPage uses AudiobookPlayer, and AudiobookPlayer uses the PlaybackState enum declared in Library.Desktop.",
+      "participating_classes": ["Library.Desktop.AppHost", "Library.Desktop.Pages.ListenPage", "Library.Desktop.Media.AudiobookPlayer"]
+    },
+    {
+      "smell": "Unstable Dependency",
+      "project": "Library.Desktop",
+      "namespace": "Library.Desktop",
+      "description": "Library.Desktop (I = 1/3: depends on Pages, used by Pages and Media) depends on the less stable Library.Desktop.Pages (I = 2/3: depends on Library.Desktop and Media, used by Library.Desktop).",
+      "participating_classes": ["Library.Desktop.AppHost"]
+    },
+    {
+      "smell": "Feature Concentration",
+      "project": "Library.Desktop",
+      "namespace": "Library.Desktop.Pages",
+      "description": "Library.Desktop.Pages realizes four features whose classes do not use each other: search [SearchPage], loans [LoansPage], account [AccountPage] and audiobook listening [ListenPage]. Their only shared dependency, INavigator, lies outside this component.",
+      "participating_classes": ["Library.Desktop.Pages.SearchPage", "Library.Desktop.Pages.LoansPage", "Library.Desktop.Pages.AccountPage", "Library.Desktop.Pages.ListenPage"]
+    },
+    {
+      "smell": "Scattered Functionality",
+      "project": "Library.Core",
+      "namespace": "Library.Core.Catalog",
+      "description": "The caching concern (a time-limited GetOrAdd lookup cache) is realized separately in Library.Core.Catalog [CatalogCache] and Library.Core.Members [MemberCache], each of which is also responsible for its own concern (book catalog, member registry).",
+      "participating_classes": ["Library.Core.Catalog.CatalogCache", "Library.Core.Members.MemberCache"]
+    },
+    {
+      "smell": "God Component",
+      "project": "Library.Tests",
+      "namespace": "Library.Tests",
+      "description": "Library.Tests contains 32 classes in a single component: the test classes for every part of the system plus their builders, fakes and helpers. A test project is analysed like any other project.",
+      "participating_classes": [
+        "Library.Tests.BookBuilder", "Library.Tests.BookCatalogTests", "Library.Tests.BookCatalogSearchTests", "Library.Tests.CatalogCacheTests",
+        "Library.Tests.MemberBuilder", "Library.Tests.MemberRegistryTests", "Library.Tests.MemberCacheTests",
+        "Library.Tests.FixedClock", "Library.Tests.LoanScenario", "Library.Tests.LoanServiceTests", "Library.Tests.LoanPolicyTests", "Library.Tests.LateFeeCalculatorTests",
+        "Library.Tests.RecordingNavigator", "Library.Tests.SearchPageTests", "Library.Tests.LoansPageTests", "Library.Tests.AccountPageTests", "Library.Tests.ListenPageTests",
+        "Library.Tests.AppHostTests", "Library.Tests.SilentAudioFile", "Library.Tests.AudiobookPlayerTests", "Library.Tests.StartupSmokeTests",
+        "Library.Tests.JsonAssert", "Library.Tests.BookJsonTests", "Library.Tests.MemberJsonTests", "Library.Tests.LoanJsonTests",
+        "Library.Tests.LoadTestRunner", "Library.Tests.CatalogLoadTests", "Library.Tests.MemberLoadTests",
+        "Library.Tests.TestDataPaths", "Library.Tests.SampleCatalogFile", "Library.Tests.SampleMembersFile", "Library.Tests.FixtureFilesTests"
+      ]
+    },
+    {
+      "smell": "Feature Concentration",
+      "project": "Library.Tests",
+      "namespace": "Library.Tests",
+      "description": "Library.Tests realizes ten independent groups of classes that do not use each other: catalog [BookBuilder, BookCatalogTests, BookCatalogSearchTests, CatalogCacheTests], members [MemberBuilder, MemberRegistryTests, MemberCacheTests], loans [FixedClock, LoanScenario, LoanServiceTests, LoanPolicyTests, LateFeeCalculatorTests], pages [RecordingNavigator, SearchPageTests, LoansPageTests, AccountPageTests, ListenPageTests], app host [AppHostTests], audiobook player [SilentAudioFile, AudiobookPlayerTests], smoke [StartupSmokeTests], JSON [JsonAssert, BookJsonTests, MemberJsonTests, LoanJsonTests], load [LoadTestRunner, CatalogLoadTests, MemberLoadTests] and fixture files [TestDataPaths, SampleCatalogFile, SampleMembersFile, FixtureFilesTests].",
+      "participating_classes": [
+        "Library.Tests.BookBuilder", "Library.Tests.BookCatalogTests", "Library.Tests.BookCatalogSearchTests", "Library.Tests.CatalogCacheTests",
+        "Library.Tests.MemberBuilder", "Library.Tests.MemberRegistryTests", "Library.Tests.MemberCacheTests",
+        "Library.Tests.FixedClock", "Library.Tests.LoanScenario", "Library.Tests.LoanServiceTests", "Library.Tests.LoanPolicyTests", "Library.Tests.LateFeeCalculatorTests",
+        "Library.Tests.RecordingNavigator", "Library.Tests.SearchPageTests", "Library.Tests.LoansPageTests", "Library.Tests.AccountPageTests", "Library.Tests.ListenPageTests",
+        "Library.Tests.AppHostTests", "Library.Tests.SilentAudioFile", "Library.Tests.AudiobookPlayerTests", "Library.Tests.StartupSmokeTests",
+        "Library.Tests.JsonAssert", "Library.Tests.BookJsonTests", "Library.Tests.MemberJsonTests", "Library.Tests.LoanJsonTests",
+        "Library.Tests.LoadTestRunner", "Library.Tests.CatalogLoadTests", "Library.Tests.MemberLoadTests",
+        "Library.Tests.TestDataPaths", "Library.Tests.SampleCatalogFile", "Library.Tests.SampleMembersFile", "Library.Tests.FixtureFilesTests"
+      ]
+    }
+  ]
+}
