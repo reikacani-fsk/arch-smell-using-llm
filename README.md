@@ -133,27 +133,32 @@ and raw answer are saved in `response.json` next to it.
 
 ```bash
 python scripts/explain.py --dry-run zo1223/OpaiTV   # only write the prompts, no LLM calls
-python scripts/explain.py zo1223/OpaiTV             # one LLM call per smell
+python scripts/explain.py zo1223/OpaiTV             # one LLM call per project
 ```
 
 For every smell Designite found, `explain.py` asks the LLM how and when it
-emerged. Dense Structure is skipped, because it concerns the whole project and
-has no specific classes. Each smell is explained on its own:
+emerged. It makes one call per C# project, covering all of that project's
+smells. Designite reports Dense Structure for `<All projects included>`, so
+that smell gets its own call. For each call:
 
-1. The participating classes from Designite are matched to the `.cs` files
-   that declare them (by class name).
-2. The commits that changed those files are collected, up to the analyzed
-   commit in `data/subjects.csv` and without merges, oldest first, each with
-   its diff for those files. A file's diff in one commit is cut off after 200
-   lines. After 200,000 characters of diffs, later commits only get their
-   message.
-3. The LLM gets Designite's finding, the smell definition from
-   `prompts/arch_smells.md` and these commits. The system prompt is
-   `prompts/explain_smell.md`. It answers with the commit the smell emerged
-   in, how it built up (a timeline of commits) and why it is a problem.
-4. Every commit the LLM cites is checked against the commits it was given.
-   `grounded` is false if it cites any other commit.
+1. Each smell's participating classes (from Designite) are matched by class
+   name to the `.cs` files of that project that declare them.
+2. The commits that changed any of these files are collected once, up to the
+   analyzed commit in `data/subjects.csv` and without merges, oldest first.
+   Each commit comes with its diff of those files and the list of files it
+   changed. A file's diff in one commit is cut off after 200 lines. After
+   400,000 characters of diffs (about 100k tokens), the remaining diffs are
+   left out.
+3. The LLM gets Designite's smells (finding, participating classes and files),
+   the definitions of those smells from `prompts/arch_smells.md`, and the
+   commits. The system prompt is `prompts/explain_smell.md`. For each smell it
+   answers with the commit the smell emerged in, how it built up (a timeline of
+   commits) and why it is a problem.
+4. For each smell, every commit the LLM cites must have changed one of that
+   smell's files. `grounded` is false if it cites any other commit. A smell
+   the LLM did not answer is recorded as an error.
 
-Results go to `output/explanations/<owner>_<repo>/`: `explanations.json` (raw
-answers and grounding check), `explanations.md` (readable, e.g. for developers
-to rate) and `prompts/<n>.md` (the prompt of each smell).
+Results go to `output/explanations/<owner>_<repo>/`: `explanations.json` (per
+smell: finding, files, commits, answer and grounding check; per call: commits
+and token usage), `explanations.md` (readable, e.g. for developers to rate) and
+`prompts/<project>.md` (the prompt of each call).
