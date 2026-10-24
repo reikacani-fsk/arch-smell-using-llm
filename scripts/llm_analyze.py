@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 OUT = ROOT / "output" / "llm"
 MODEL = "claude-opus-5-5"
-EFFORT = "high"
+EFFORT = "medium"
 SMELLS = ["Cyclic Dependency", "Unstable Dependency", "Ambiguous Interface", "God Component",
           "Feature Concentration", "Scattered Functionality", "Dense Structure"]
 MIN_COMMITS = 10  # --history skips repos with fewer commits changing the analyzed files
