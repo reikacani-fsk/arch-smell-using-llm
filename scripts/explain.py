@@ -1,7 +1,8 @@
 """Asks an LLM to explain how and when each architectural smell found by Designite emerged (RQ2).
 One LLM call per project: it gets all Designite smells of the project (with their participating classes and the files
 declaring them), the smell definitions from prompts/arch_smells.md, and once the commits that changed those files, up to
-the analyzed commit, each with its diff and changed files. prompts/explain_smell.md is the system prompt.
+the analyzed commit, each with its message (header and body), diff and changed files. prompts/explain_smell.md is the
+system prompt.
 Designite reports Dense Structure for "<All projects included>", so it gets its own call.
 Every commit the LLM cites for a smell is checked: grounded = it cited only commits that changed that smell's files.
 Needs:   repos cloned by scripts/analyze.sh, Designite results in output/designite/, and ANTHROPIC_API_KEY in .env
@@ -28,6 +29,7 @@ SYSTEM = (ROOT / "prompts" / "explain_smell.md").read_text(encoding="utf-8")
 DEFINITIONS = (ROOT / "prompts" / "arch_smells.md").read_text(encoding="utf-8")
 MAX_DIFF_LINES = 200        # lines per file in a commit diff; longer diffs are cut off
 MAX_DIFF_CHARS = 400_000    # all diffs of one call (about 100k tokens); later diffs are left out
+MAX_BODY_CHARS = 2000       # characters of a commit message body; longer bodies are cut off
 ALL_PROJECTS = "<All projects included>"   # Designite's project for Dense Structure
 EXPLANATION = {
     "type": "object",
@@ -72,8 +74,9 @@ def class_files(repo_dir, project_files):
 
 
 def history(repo_dir, commit, files):
-    """[{commit, date, message, files, diff}] of the non-merge commits up to `commit` that changed `files`, oldest
-    first; `files` of a commit are the given files it changed, `diff` its diff of them (empty once the budget is used)."""
+    """[{commit, date, message, body, files, diff}] of the non-merge commits up to `commit` that changed `files`, oldest
+    first; `message` is the header of the commit message, `body` the rest, `files` the given files it changed, `diff`
+    its diff of them (empty once the budget is used)."""
     log = git(repo_dir, "log", "--reverse", "--no-merges", "--name-only", "--format=@@%h%x09%ad%x09%s",
               "--date=short", "--abbrev=10", commit, "--", *sorted(files))
     commits, budget = [], MAX_DIFF_CHARS
@@ -99,7 +102,10 @@ def history(repo_dir, commit, files):
             if left_out:
                 parts.append(f"... (diffs of {left_out} more files left out to keep the input short)")
             diff = "\n".join(parts)
-        commits.append({"commit": sha, "date": date, "message": message,
+        body = git(repo_dir, "show", "-s", "--format=%b", sha).strip()
+        if len(body) > MAX_BODY_CHARS:
+            body = body[:MAX_BODY_CHARS] + " ... (rest of the message cut off)"
+        commits.append({"commit": sha, "date": date, "message": message, "body": body,
                         "files": sorted(set(changed) & files), "diff": diff})
     return commits
 
@@ -122,9 +128,10 @@ def prompt(project, smells, commits):
     parts.append("</definitions>")
     parts.append(f'<commits count="{len(commits)}">')
     for c in commits:
-        body = c["diff"] or "(diff left out to keep the input short)"
-        parts.append(f'<commit hash="{c["commit"]}" date="{c["date"]}">\n{c["message"]}\n'
-                     f'Changed files: {", ".join(c["files"])}\n\n{body}\n</commit>')
+        message = c["message"] + (f"\n\n{c['body']}" if c["body"] else "")
+        diff = c["diff"] or "(diff left out to keep the input short)"
+        parts.append(f'<commit hash="{c["commit"]}" date="{c["date"]}">\n{message}\n'
+                     f'Changed files: {", ".join(c["files"])}\n\n{diff}\n</commit>')
     parts.append("</commits>")
     parts.append("Explain for each smell above how and when it emerged.")
     return "\n".join(parts)
