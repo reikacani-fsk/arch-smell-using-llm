@@ -132,33 +132,36 @@ and raw answer are saved in `response.json` next to it.
 ## Explaining how smells emerged (RQ2)
 
 ```bash
-python scripts/explain.py --dry-run zo1223/OpaiTV   # only write the prompts, no LLM calls
-python scripts/explain.py zo1223/OpaiTV             # one LLM call per project
+python scripts/explain.py --dry-run zo1223/OpaiTV   # only write the first message of each session, no LLM calls
+python scripts/explain.py zo1223/OpaiTV             # one agent session per project
 ```
 
-For every smell Designite found, `explain.py` asks the LLM how and when it
-emerged. It makes one call per C# project, covering all of that project's
-smells. Designite reports Dense Structure for `<All projects included>`, so
-that smell gets its own call. For each call:
+For every smell Designite found, `explain.py` lets an LLM agent find out how
+and when it emerged. It runs one session per C# project, covering all of that
+project's smells. Designite reports Dense Structure for `<All projects
+included>`, so that smell gets its own session. For each session:
 
 1. Each smell's participating classes (from Designite) are matched by class
    name to the `.cs` files of that project that declare them.
-2. The commits that changed any of these files are collected once, up to the
-   analyzed commit in `data/subjects.csv` and without merges, oldest first.
-   Each commit comes with its diff of those files and the list of files it
-   changed. A file's diff in one commit is cut off after 200 lines. After
-   400,000 characters of diffs (about 100k tokens), the remaining diffs are
-   left out.
-3. The LLM gets Designite's smells (finding, participating classes and files),
-   the definitions of those smells from `prompts/arch_smells.md`, and the
-   commits. The system prompt is `prompts/explain_smell.md`. For each smell it
-   answers with the commit the smell emerged in, how it built up (a timeline of
-   commits) and why it is a problem.
-4. For each smell, every commit the LLM cites must have changed one of that
-   smell's files. `grounded` is false if it cites any other commit. A smell
-   the LLM did not answer is recorded as an error.
+2. The LLM gets Designite's smells (finding, participating classes and files)
+   and the definitions of those smells from `prompts/arch_smells.md`, but no
+   history. The system prompt is `prompts/explain_smell.md`.
+3. The LLM explores the history itself with read-only tools: `git_log`,
+   `git_show`, `read_file`, `list_files` and `grep`. They only reach the
+   analyzed commit in `data/subjects.csv` and its ancestors. A tool result is
+   cut off after 40,000 characters; files and diffs come in pages of 500
+   lines. A session ends when the LLM calls `submit_explanations`, and fails
+   after 60 steps.
+4. For each smell the LLM answers with the commit the smell emerged in, how it
+   built up (a timeline of commits) and why it is a problem.
+5. Every commit the LLM cites is checked: `grounded` is false if it cites a
+   commit that is not in the analyzed history. Commits that did not change the
+   smell's files are allowed (a smell can emerge through other files) and are
+   listed in `other_commits`. A smell the LLM did not answer is recorded as an
+   error.
 
 Results go to `output/explanations/<owner>_<repo>/`: `explanations.json` (per
-smell: finding, files, commits, answer and grounding check; per call: commits
-and token usage), `explanations.md` (readable, e.g. for developers to rate) and
-`prompts/<project>.md` (the prompt of each call).
+smell: finding, files, commits that changed them, answer and grounding check;
+per session: every step with its text and tool calls, and token usage),
+`explanations.md` (readable, e.g. for developers to rate) and
+`prompts/<project>.md` (the first message of each session).
