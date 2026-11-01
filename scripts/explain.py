@@ -3,6 +3,8 @@ One LLM call per project: it gets all Designite smells of the project (with thei
 declaring them), the smell definitions from prompts/arch_smells.md, and once the commits that changed those files, up to
 the analyzed commit, each with its message (header and body), diff and changed files. prompts/explain_smell.md is the
 system prompt.
+A file diff longer than MAX_DIFF_LINES is filtered to the changed lines that matter for architecture smells
+(declarations and uses of the solution's classes); if all diffs exceed MAX_DIFF_CHARS, the newest are left out (warning).
 Designite reports Dense Structure for "<All projects included>", so it gets its own call.
 Every commit the LLM cites for a smell is checked: grounded = it cited only commits that changed that smell's files.
 Needs:   repos cloned by scripts/analyze.sh, Designite results in output/designite/, and ANTHROPIC_API_KEY in .env
@@ -27,10 +29,14 @@ from llm_analyze import EFFORT, MODEL, ROOT, projects
 OUT = ROOT / "output" / "explanations"
 SYSTEM = (ROOT / "prompts" / "explain_smell.md").read_text(encoding="utf-8")
 DEFINITIONS = (ROOT / "prompts" / "arch_smells.md").read_text(encoding="utf-8")
-MAX_DIFF_LINES = 200        # lines per file in a commit diff; longer diffs are cut off
-MAX_DIFF_CHARS = 400_000    # all diffs of one call (about 100k tokens); later diffs are left out
+MAX_DIFF_LINES = 200        # a file diff with more lines is filtered to the lines that matter for architecture smells
+MAX_FILTERED_LINES = 1000   # lines per filtered file diff; longer ones are cut off
+MAX_DIFF_CHARS = 400_000    # all diffs of one call (about 100k tokens); later diffs are left out, with a warning
 MAX_BODY_CHARS = 2000       # characters of a commit message body; longer bodies are cut off
 ALL_PROJECTS = "<All projects included>"   # Designite's project for Dense Structure
+# changed lines a filtered file diff keeps, besides lines that use a class of the solution
+ARCHITECTURE_LINE = re.compile(r"^\s*(?:using|namespace)\s|\b(?:class|interface|record|struct|enum)\s+\w"
+                               r"|^\s*(?:public|private|protected|internal)\s")
 EXPLANATION = {
     "type": "object",
     "additionalProperties": False,
@@ -73,17 +79,42 @@ def class_files(repo_dir, project_files):
     return result
 
 
-def history(repo_dir, commit, files):
-    """[{commit, date, message, body, files, diff}] of the non-merge commits up to `commit` that changed `files`, oldest
-    first; `message` is the header of the commit message, `body` the rest, `files` the given files it changed, `diff`
-    its diff of them (empty once the budget is used)."""
+def condense(lines, uses_class):
+    """The lines of a file diff that matter for architecture smells: the file header, and the changed lines that
+    declare a namespace, using, type or member or that use a class of the solution (`uses_class`), each under its
+    hunk header. Returns (kept lines, number of changed lines left out)."""
+    kept, hunk, left_out = [], None, 0
+    for line in lines:
+        if line.startswith("@@"):
+            hunk = line
+        elif hunk is None:
+            kept.append(line)        # file header: diff --git, index, ---, +++
+        elif line.startswith(("+", "-")):
+            if ARCHITECTURE_LINE.search(line[1:]) or (uses_class and uses_class.search(line[1:])):
+                if hunk:
+                    kept.append(hunk)
+                    hunk = ""
+                kept.append(line)
+            else:
+                left_out += 1
+    return kept, left_out
+
+
+def history(repo_dir, commit, files, classes):
+    """[{commit, date, message, body, files, diff, diff_files_left_out}] of the non-merge commits up to `commit` that
+    changed `files`, oldest first; `message` is the header of the commit message, `body` the rest, `files` the given
+    files it changed, `diff` its diff of them (long file diffs filtered with `classes`, the class names of the
+    solution) and `diff_files_left_out` how many of them got no diff because the budget was used up."""
     log = git(repo_dir, "log", "--reverse", "--no-merges", "--name-only", "--format=@@%h%x09%ad%x09%s",
               "--date=short", "--abbrev=10", commit, "--", *sorted(files))
+    names = sorted(map(re.escape, classes), key=len, reverse=True)
+    uses_class = re.compile(r"\b(?:" + "|".join(names) + r")\b") if names else None
     commits, budget = [], MAX_DIFF_CHARS
     for block in log.split("@@")[1:]:
         header, *changed = block.strip().splitlines()
         sha, date, message = header.split("\t", 2)
-        diff = ""
+        changed = sorted(set(changed) & files)
+        diff, left_out = "", len(changed)
         if budget > 0:
             parts, left_out = [], 0
             for file_diff in re.split(r"^(?=diff --git )", git(repo_dir, "show", "--format=", "--no-color", sha,
@@ -93,10 +124,15 @@ def history(repo_dir, commit, files):
                 if budget <= 0:
                     left_out += 1
                     continue
-                lines = file_diff.splitlines()
-                part = "\n".join(lines[:MAX_DIFF_LINES])
+                lines, filtered = file_diff.splitlines(), 0
                 if len(lines) > MAX_DIFF_LINES:
-                    part += f"\n... ({len(lines) - MAX_DIFF_LINES} more lines of this file cut off)"
+                    lines, filtered = condense(lines, uses_class)
+                part = "\n".join(lines[:MAX_FILTERED_LINES])
+                if filtered:
+                    part += (f"\n... ({filtered} more changed lines of this file left out: only lines that declare a "
+                             "namespace, using, type or member or use a class of the solution are shown)")
+                if len(lines) > MAX_FILTERED_LINES:
+                    part += f"\n... ({len(lines) - MAX_FILTERED_LINES} more lines of this file cut off)"
                 parts.append(part)
                 budget -= len(part)
             if left_out:
@@ -106,7 +142,7 @@ def history(repo_dir, commit, files):
         if len(body) > MAX_BODY_CHARS:
             body = body[:MAX_BODY_CHARS] + " ... (rest of the message cut off)"
         commits.append({"commit": sha, "date": date, "message": message, "body": body,
-                        "files": sorted(set(changed) & files), "diff": diff})
+                        "files": changed, "diff": diff, "diff_files_left_out": left_out})
     return commits
 
 
@@ -211,13 +247,17 @@ def main(selected, dry_run):
 
         all_smells, calls = [], []
         for project, smells in groups.items():
-            commits = history(repo_dir, subject["commit"], set().union(*(s["files"] for s in smells)))
+            commits = history(repo_dir, subject["commit"], set().union(*(s["files"] for s in smells)),
+                              declared[ALL_PROJECTS])
             for s in smells:
                 s["commits"] = [c["commit"] for c in commits if set(c["files"]) & set(s["files"])]
             all_smells += smells
             text = prompt(project, smells, commits)
             prompt_file = out / "prompts" / (re.sub(r"[^\w.-]", "_", project) + ".md")
             prompt_file.write_text(text + "\n", encoding="utf-8")
+            left_out = sum(c["diff_files_left_out"] for c in commits)
+            if left_out:
+                print(f"    WARNING {project}: MAX_DIFF_CHARS used up, diffs of {left_out} changed files left out")
             label = f"    {project}: {len(smells)} smells, {len(commits)} commits, {len(text)} chars"
             if dry_run:
                 print(label)
@@ -236,7 +276,7 @@ def main(selected, dry_run):
                 else:
                     s["error"] = "the LLM gave no explanation for this smell"
             calls.append({"project": project, "prompt": prompt_file.relative_to(out).as_posix(),
-                          "commits": commits, "usage": message.usage.model_dump()})
+                          "diff_files_left_out": left_out, "commits": commits, "usage": message.usage.model_dump()})
             answered = [s for s in smells if "answer" in s]
             print(f"{label}: {len(answered)}/{len(smells)} explained, "
                   f"{sum(s['grounding']['grounded'] for s in answered)} grounded")

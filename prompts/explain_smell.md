@@ -15,4 +15,5 @@ For each smell, separately:
 - Base every statement only on the commits and diffs you are given. Do not guess about changes you cannot see.
 - Refer to commits only by the short hashes given in the input, written exactly as given.
 - In a timeline, list only the commits that contributed to that smell, oldest first. Leave out commits that did not affect it.
+- Long file diffs are filtered: they show only the changed lines that declare a namespace, using, type or member or that use a class of the solution, and a note says how many lines were left out. Do not conclude that a dependency or change is absent only because a filtered diff does not show it.
 - Some diffs are cut off or left out to keep the input short. If the evidence is not enough to say when a smell emerged, say so in `how` and leave `emerged_in` empty.
