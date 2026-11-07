@@ -41,7 +41,7 @@ EXPLANATION = {
     "required": ["smell_id", "emerged_in", "emerged_date", "how", "timeline", "why_problematic"],
     "properties": {
         "smell_id": {"type": "integer"},
-        "emerged_in": {"type": "string", "description": "short hash of the commit the smell first appeared in, or empty"},
+        "emerged_in": {"type": "string", "description": "short hash of the commit the smell last emerged in, or empty"},
         "emerged_date": {"type": "string"},
         "how": {"type": "string"},
         "timeline": {"type": "array", "items": {

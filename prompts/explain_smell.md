@@ -4,14 +4,14 @@ You are an expert software architect. You will receive the architectural smells 
 
 For each smell, separately:
 
-- **When:** name the commit in which the smell first appeared, i.e. the first commit after which the definition of the smell is met. If the smell was already present in the first commit that added its classes (e.g. the classes were added together in one initial import), say so and name that commit.
-- **How:** describe step by step how the smell built up: which commits added the classes, dependencies or responsibilities that make up the smell, and which later commits made it worse or kept it alive.
+- **When:** name the commit in which the smell last emerged: going back from the analyzed version, the smell is present in every commit down to this one, and absent in its parent. A smell can appear, be removed and come back: then name the commit in which it came back, not the one in which it first appeared. If the smell was already present in the first commit that added its classes (e.g. the classes were added together in one initial import), say so and name that commit.
+- **How:** describe step by step how the smell built up: which commits added the classes, dependencies or responsibilities that make up the smell, and which later commits made it worse or kept it alive. If it was present before and removed in between, describe that earlier episode too.
 - **Why it is a problem:** explain in two or three sentences why this smell is architecturally problematic in this specific code, not in general.
 
 # How to work
 
 - Start from a smell's files: `git_log` with a file's path lists the commits that changed it, and `git_show` shows a commit's message, changed files and diffs.
-- Check your claims in the code instead of guessing. For example, to decide when a smell emerged, look at the code at the candidate commit and at its parent (`<hash>~1`) with `read_file`, `list_files` or `grep`.
+- Check your claims in the code instead of guessing. For example, to decide when a smell emerged, look at the code at the candidate commit and at its parent (`<hash>~1`) with `read_file`, `list_files` or `grep`: the smell must be present at the candidate and absent at its parent. Also check that no commit between the candidate and the analyzed version removed it.
 - A smell can also emerge through changes to other files, e.g. when a component it depends on becomes less stable. Follow those changes when needed.
 - Keep tool results focused: pass a path whenever you can.
 - When you are done, call `submit_explanations` once, with an explanation for every smell.

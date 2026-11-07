@@ -1,0 +1,256 @@
+{
+  "repo": "rkacani/bookstore",
+  "url": "https://github.com/rkacani/bookstore",
+  "project": "Bookstore",
+  "note": "Steps number the commits of the repo, oldest first (see commits). present: step ranges in which Designite finds the smell. emerged_in: the step in which the smell last emerged (the start of the run that lasts until the analyzed, last commit), which is what explain.py asks for. first_emerged_in: the step in which it first appeared, if the smell was removed in between and came back. how and why: the explanation, for reading.",
+  "smells": [
+    {
+      "id": "cycle-orders-billing",
+      "smell": "Cyclic Dependency",
+      "components": [
+        "Bookstore.Orders",
+        "Bookstore.Billing"
+      ],
+      "present": [
+        [
+          6,
+          14
+        ],
+        [
+          20,
+          22
+        ]
+      ],
+      "emerged_in": 20,
+      "first_emerged_in": 6,
+      "how": "Orders has depended on Billing since step 3 (CheckoutService calls InvoiceService). In step 6 InvoiceService.CreateFor starts taking an Order and reading its OrderLines, so Billing depends on Orders and the cycle appears. Step 15 removes it again: InvoiceService gets plain values. In step 20 the new Billing.PaymentService loads the Order through OrderRepository to mark it paid, which closes the cycle again.",
+      "why": "Billing and Orders can no longer be built, tested or changed in isolation: a change to the order model can break settling invoices, and a change to invoicing can break checkout."
+    },
+    {
+      "id": "unstable-orders",
+      "smell": "Unstable Dependency",
+      "namespace": "Bookstore.Orders",
+      "depends_on": [
+        "Bookstore.Billing"
+      ],
+      "present": [
+        [
+          6,
+          14
+        ],
+        [
+          20,
+          22
+        ]
+      ],
+      "emerged_in": 20,
+      "first_emerged_in": 6,
+      "how": "It comes with the cycle and emerges through Billing's files. Orders has depended on Billing since step 3; then Billing depended on nothing and was maximally stable. When Billing starts depending on Orders (InvoiceService in step 6; PaymentService in step 20, which loads the order and its lines), Billing refers to several Orders classes but is used by few classes, so it becomes less stable than Orders, which shipping, the partner API and the admin commands use. Step 15 removes Billing's dependency and with it the smell. No file of Orders changed in step 20.",
+      "why": "Orders, which much of the shop relies on, depends on Billing, which now has to change along with the order model, so changes can ripple from Orders into Billing and back."
+    },
+    {
+      "id": "unstable-customers",
+      "smell": "Unstable Dependency",
+      "namespace": "Bookstore.Customers",
+      "depends_on": [
+        "Bookstore.Notifications"
+      ],
+      "present": [
+        [
+          13,
+          22
+        ]
+      ],
+      "emerged_in": 13,
+      "how": "Customers has depended on Notifications since step 8 (CustomerService sends the welcome email through EmailSender); then Notifications depended on nothing and was maximally stable. In step 13 Notifications gets RecommendationBlock, which reads books from Catalog. Notifications now has an outgoing dependency and becomes less stable than Customers. No file of Customers changed in that commit.",
+      "why": "Customers, which Orders, Shipping, Admin and later Reporting rely on, depends on Notifications, which now changes whenever the catalog changes."
+    },
+    {
+      "id": "god-admin",
+      "smell": "God Component",
+      "namespace": "Bookstore.Admin",
+      "present": [
+        [
+          17,
+          22
+        ]
+      ],
+      "emerged_in": 17,
+      "how": "Admin is created in step 9 with 17 classes (one command class per action), grows to 25 classes in step 14 and to 32 in step 17, more than the 30 classes Designite allows.",
+      "why": "Every new admin action adds another class to the same namespace, which now mixes commands for the catalog, customers, orders, newsletters, shipments and invoices."
+    },
+    {
+      "id": "fc-shipping",
+      "smell": "Feature Concentration",
+      "namespace": "Bookstore.Shipping",
+      "present": [
+        [
+          18,
+          22
+        ]
+      ],
+      "emerged_in": 18,
+      "how": "Up to step 17 all classes of Shipping are connected through Shipment and ShipmentService; gift wrapping (step 11) is attached to Shipment. Step 18 adds returns (ReturnRequest, ReturnDesk) and pickup points (PickupPoint, PickupPointDirectory) as two groups that use neither each other nor the shipment classes: 3 groups in 10 classes, LCC 0.3 > 0.2.",
+      "why": "Shipping now holds three unrelated features, so changes to returns or pickup points touch the same component as shipping itself, and none of them can be reused on its own."
+    },
+    {
+      "id": "sf-orders-pricing",
+      "smell": "Scattered Functionality",
+      "namespace": "Bookstore.Orders",
+      "components": [
+        "Bookstore.Catalog",
+        "Bookstore.Customers"
+      ],
+      "present": [
+        [
+          19,
+          22
+        ]
+      ],
+      "emerged_in": 19,
+      "how": "Pricing is split between Catalog (PriceList) and Customers (LoyaltyProgram). Step 12 adds OrderService.QuoteFor, which combines both, once. Step 19 adds CartService.PreviewTotal, which combines them again: the concern is now realized in two places and Designite reports it (one method alone is not enough).",
+      "why": "Computing a discounted price needs Catalog and Customers together, and the rule is repeated in Orders, so a change to discounts has to be made in several places."
+    },
+    {
+      "id": "ai-integration",
+      "smell": "Ambiguous Interface",
+      "namespace": "Bookstore.Integration",
+      "present": [
+        [
+          16,
+          22
+        ]
+      ],
+      "emerged_in": 16,
+      "how": "Integration is created in step 10 with an explicit API: PartnerApi.ExportOrders, ImportOrder and CancelOrder. Step 16 makes them private and adds PartnerApi.Handle(string command, object payload) as the only public method of the component's 5 classes.",
+      "why": "Clients of PartnerApi can no longer see which operations exist or what payload each needs; a wrong command or payload type only fails at run time."
+    },
+    {
+      "id": "dense-structure",
+      "smell": "Dense Structure",
+      "project": "<All projects included>",
+      "namespace": "<All namespaces included>",
+      "present": [
+        [
+          21,
+          22
+        ]
+      ],
+      "emerged_in": 21,
+      "how": "The dependencies between the namespaces grow step by step (17 dependencies between 8 namespaces after step 20, average degree 4.25). Step 21 adds Reporting, which depends on all 8 other namespaces: 25 dependencies between 9 namespaces, average degree 5.6 > 5.",
+      "why": "Nearly every namespace depends on several others, so there is no layering left that tells where a change stops."
+    }
+  ],
+  "commits": [
+    {
+      "step": 1,
+      "commit": "dbccd6ee4a",
+      "message": "Add catalog and customer modules"
+    },
+    {
+      "step": 2,
+      "commit": "6c4dce7b6f",
+      "message": "Add order placement"
+    },
+    {
+      "step": 3,
+      "commit": "eaa567433e",
+      "message": "Create invoices at checkout"
+    },
+    {
+      "step": 4,
+      "commit": "d47057a8ff",
+      "message": "Round prices and invoice amounts to cents"
+    },
+    {
+      "step": 5,
+      "commit": "c234c7eee4",
+      "message": "Add shipping"
+    },
+    {
+      "step": 6,
+      "commit": "a86bbbb882",
+      "message": "List the order lines on invoices"
+    },
+    {
+      "step": 7,
+      "commit": "7e6a95c8d6",
+      "message": "Add payment due dates to invoices"
+    },
+    {
+      "step": 8,
+      "commit": "ca5b8bd971",
+      "message": "Send welcome, order and shipping emails"
+    },
+    {
+      "step": 9,
+      "commit": "4143cc872d",
+      "message": "Add admin console with catalog and customer commands"
+    },
+    {
+      "step": 10,
+      "commit": "e2f30f57f6",
+      "message": "Add partner API for marketplace orders"
+    },
+    {
+      "step": 11,
+      "commit": "a9caeed6c6",
+      "message": "Offer gift wrapping for shipments"
+    },
+    {
+      "step": 12,
+      "commit": "1839acf54d",
+      "message": "Quote order prices with the loyalty discount"
+    },
+    {
+      "step": 13,
+      "commit": "10a633cd5d",
+      "message": "Recommend books at the end of every email"
+    },
+    {
+      "step": 14,
+      "commit": "bfc2573685",
+      "message": "Add admin commands for orders and newsletters"
+    },
+    {
+      "step": 15,
+      "commit": "45ae161a74",
+      "message": "Pass order data to billing as plain values"
+    },
+    {
+      "step": 16,
+      "commit": "a62b06d0cf",
+      "message": "Route all partner calls through one Handle entry point"
+    },
+    {
+      "step": 17,
+      "commit": "ce7435fa0a",
+      "message": "Add admin commands for shipments and invoices"
+    },
+    {
+      "step": 18,
+      "commit": "daf6018e1e",
+      "message": "Add returns and pickup points"
+    },
+    {
+      "step": 19,
+      "commit": "146ae038ea",
+      "message": "Show discounted prices in the shopping cart"
+    },
+    {
+      "step": 20,
+      "commit": "b117c1ad36",
+      "message": "Mark orders as paid when their invoice is settled"
+    },
+    {
+      "step": 21,
+      "commit": "3c965910f7",
+      "message": "Add management dashboard"
+    },
+    {
+      "step": 22,
+      "commit": "9a6634f70f",
+      "message": "Tidy up order and billing code"
+    }
+  ]
+}

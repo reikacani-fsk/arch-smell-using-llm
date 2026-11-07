@@ -152,8 +152,11 @@ included>`, so that smell gets its own session. For each session:
    cut off after 40,000 characters; files and diffs come in pages of 500
    lines. A session ends when the LLM calls `submit_explanations`, and fails
    after 60 steps.
-4. For each smell the LLM answers with the commit the smell emerged in, how it
-   built up (a timeline of commits) and why it is a problem.
+4. For each smell the LLM answers with the commit the smell last emerged in
+   (the oldest commit of the unbroken run back from the analyzed commit in which
+   the smell is present: if it was removed and came back, the commit it came
+   back in, as `verify.py` checks), how it built up (a timeline of commits) and
+   why it is a problem.
 5. Every commit the LLM cites is checked: `grounded` is false if it cites a
    commit that is not in the analyzed history. Commits that did not change the
    smell's files are allowed (a smell can emerge through other files) and are
@@ -165,6 +168,16 @@ smell: finding, files, commits that changed them, answer and grounding check;
 per session: every step with its text and tool calls, and token usage),
 `explanations.md` (readable, e.g. for developers to rate) and
 `prompts/<project>.md` (the first message of each session).
+
+### Testbed with known answers
+
+[rkacani/bookstore](https://github.com/rkacani/bookstore) is a small C# repo in
+which each smell emerges in a known commit for a known reason. It includes a
+smell that is removed and comes back, and smells that emerge through files
+Designite does not list. It goes through the pipeline like any other repo (it
+is in `data/screened.tsv`). `testbed/ground_truth.json` records the answers, and
+`testbed/score.py` compares the LLM's explanations with them. See
+[testbed/README.md](testbed/README.md).
 
 ### Checking the emergence commits with Designite
 
