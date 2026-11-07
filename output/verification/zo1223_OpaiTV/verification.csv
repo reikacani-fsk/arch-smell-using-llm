@@ -1,0 +1,16 @@
+smell,project,namespace,llm_commit,present_before,present_at,verdict,actual_commit,distance
+Cyclic Dependency,OrionTV.Desktop.App,OrionTV.Desktop.App,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Cyclic Dependency,OrionTV.Desktop.App,OrionTV.Desktop.App,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Feature Concentration,OrionTV.Desktop.App,OrionTV.Desktop.App,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+God Component,OrionTV.Desktop.App,OrionTV.Desktop.App,f1bbae77f7,no,yes,confirmed,f1bbae77f7,0
+Unstable Dependency,OrionTV.Desktop.App,OrionTV.Desktop.App,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Unstable Dependency,OrionTV.Desktop.App,OrionTV.Desktop.App.LocalPlayback,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Feature Concentration,OrionTV.Desktop.App,OrionTV.Desktop.App.Views,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Scattered Functionality,OrionTV.Desktop.App,OrionTV.Desktop.App.Views,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Scattered Functionality,OrionTV.Desktop.App,OrionTV.Desktop.App.Views,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Scattered Functionality,OrionTV.Desktop.App,OrionTV.Desktop.App.Views,b3ae88d60f,no parent,no,not_present,e137971afc,10
+Scattered Functionality,OrionTV.Desktop.App,OrionTV.Desktop.App.Views,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Scattered Functionality,OrionTV.Desktop.App,OrionTV.Desktop.App.Views,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+God Component,OrionTV.Desktop.Core,OrionTV.Desktop.Core,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+Feature Concentration,OrionTV.Desktop.Tests,OrionTV.Desktop.Tests,b3ae88d60f,no parent,yes,confirmed,b3ae88d60f,0
+God Component,OrionTV.Desktop.Tests,OrionTV.Desktop.Tests,f1bbae77f7,no,yes,confirmed,f1bbae77f7,0
