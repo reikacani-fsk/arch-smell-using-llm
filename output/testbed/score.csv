@@ -1,0 +1,9 @@
+smell,expected_commit,llm_commit,verdict
+dense-structure,3c965910f7,3c965910f7,correct
+god-admin,ce7435fa0a,ce7435fa0a,correct
+cycle-orders-billing,b117c1ad36,b117c1ad36,correct
+unstable-customers,10a633cd5d,10a633cd5d,correct
+ai-integration,a62b06d0cf,a62b06d0cf,correct
+sf-orders-pricing,146ae038ea,1839acf54d,too_early
+unstable-orders,b117c1ad36,b117c1ad36,correct
+fc-shipping,daf6018e1e,daf6018e1e,correct
