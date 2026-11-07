@@ -165,3 +165,37 @@ smell: finding, files, commits that changed them, answer and grounding check;
 per session: every step with its text and tool calls, and token usage),
 `explanations.md` (readable, e.g. for developers to rate) and
 `prompts/<project>.md` (the first message of each session).
+
+### Checking the emergence commits with Designite
+
+```bash
+python scripts/verify.py                  # all repos with explanations (on Windows, like analyze.sh)
+python scripts/verify.py zo1223/OpaiTV    # only the given repos
+```
+
+`verify.py` checks the commit in which the LLM says each smell emerged. It runs
+Designite on that commit and on its parent: the claim holds if the smell is
+absent at the parent and present at the commit. It also finds the actual
+emergence commit: going back from the analyzed commit through the commits that
+change C# code, it is the oldest commit of the unbroken run in which Designite
+finds the smell. A smell counts as the same if smell, project and namespace
+match (for Cyclic Dependency and Scattered Functionality also the components
+Designite lists).
+
+Designite runs in a temporary git worktree, so `repos/` stays at the analyzed
+commit. Its results are cached per commit in
+`output/verification/<owner>_<repo>/designite/<commit>/`. The result is
+`output/verification/<owner>_<repo>/verification.csv`, one row per smell:
+
+| column           | meaning                                                                                                     |
+|------------------|-------------------------------------------------------------------------------------------------------------|
+| `llm_commit`     | commit the LLM says the smell emerged in                                                                    |
+| `present_before` | smell found at its parent: `yes`, `no`, `no parent` or `failed` (Designite failed)                          |
+| `present_at`     | smell found at `llm_commit`: `yes`, `no` or `failed`                                                        |
+| `verdict`        | `confirmed`, `already_present` (LLM too late), `not_present` (LLM too early), `unverifiable` or `no_commit` |
+| `actual_commit`  | actual emergence commit (empty if Designite does not find the smell at the analyzed commit)                 |
+| `distance`       | commits changing C# code from `llm_commit` to `actual_commit`: `+` LLM too early, `-` LLM too late           |
+
+`confirmed` with distance 0 means the LLM found the exact commit. `confirmed`
+with another distance means the smell appeared there, disappeared and came back
+later.
