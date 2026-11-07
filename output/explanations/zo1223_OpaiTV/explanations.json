@@ -1,0 +1,1707 @@
+{
+  "repo": "zo1223/OpaiTV",
+  "commit": "e137971afcca15d93b1c87f5eccd705bed82894c",
+  "model": "claude-opus-5-5",
+  "effort": "medium",
+  "smells": [
+    {
+      "designite": {
+        "Smell": "Cyclic Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because this component participates in a cyclic dependency. The participating components in the cycle are: OrionTV.Desktop.App' OrionTV.Desktop.App.Views",
+        "Responsible classes": "OrionTV.Desktop.App.AiCliLauncher' OrionTV.Desktop.App.MainWindow' OrionTV.Desktop.App.Views.AiImportDialog' OrionTV.Desktop.App.Views.LiveView' OrionTV.Desktop.App.Views.PlayerView",
+        "Participating classes": "OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.Views.AiImportDialog; OrionTV.Desktop.App.Views.LiveView; OrionTV.Desktop.App.Views.PlayerView"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "c601eb789d",
+        "f1bbae77f7",
+        "61f0607246",
+        "e1991e7308",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 1,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "The cycle was already there in the first commit, b3ae88d60f ('publish source-free OrionTV'), which imported the whole desktop app in one go. In that commit MainWindow (namespace OrionTV.Desktop.App) does `using OrionTV.Desktop.App.Views` and creates HomeView, LiveView, SettingsView, PlayerView and the other pages in CreateView. That is the App \u2192 Views edge. The Views depend back on the root namespace: AiImportDialog calls AiCliLauncher.ResolveDocsDirectory/Launch/LaunchDiscovery, and LiveView and PlayerView use PlaybackController and the PlaybackState enum declared in PlaybackController.cs. Later commits made both directions stronger. f1bbae77f7 grew MainWindow by about 200 lines and rewrote PlayerView (+1070 lines), which now handles PlaybackState in Controller_StateChanged. e137971afc added SectionNavigationState in MainWindow and the INavigationVisibilityAware interface in Navigation.cs, which LiveView now implements.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Initial import: MainWindow creates all Views (App\u2192Views); AiImportDialog calls AiCliLauncher, and LiveView/PlayerView use PlaybackController/PlaybackState (Views\u2192App)"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "MainWindow and PlayerView greatly expanded; PlayerView adds more state handling against App's PlaybackState/PlaybackController"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "MainWindow adds per-section view state over the Views; LiveView implements the new App-level INavigationVisibilityAware interface"
+          }
+        ],
+        "why_problematic": "The shell (MainWindow) builds the pages, and the pages reach back into root-namespace services (AiCliLauncher) and playback types (PlaybackState), so neither namespace can be built or tested without the other. A change to PlaybackController's state model or to MainWindow's navigation ripples into LiveView and PlayerView and back again. As a result, no page can be reused outside this one window."
+      },
+      "grounding": {
+        "cited": 3,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Cyclic Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because this component participates in a cyclic dependency. The participating components in the cycle are: OrionTV.Desktop.App' OrionTV.Desktop.App.Views' OrionTV.Desktop.App.LocalPlayback",
+        "Responsible classes": "OrionTV.Desktop.App.AiCliLauncher' OrionTV.Desktop.App.MainWindow' OrionTV.Desktop.App.Views.AiImportDialog' OrionTV.Desktop.App.Views.LiveView' OrionTV.Desktop.App.Views.PlayerView' OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine",
+        "Participating classes": "OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.Views.AiImportDialog; OrionTV.Desktop.App.Views.LiveView; OrionTV.Desktop.App.Views.PlayerView; OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "c601eb789d",
+        "f1bbae77f7",
+        "61f0607246",
+        "e1991e7308",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 2,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "This cycle was also present from the initial import, b3ae88d60f. It runs App \u2192 Views (MainWindow creates PlayerView and the other pages), then Views \u2192 LocalPlayback (PlayerView does `using OrionTV.Desktop.App.LocalPlayback`, hosts MpvHost in XAML and creates `new MpvLocalEngine(hwnd, Dispatcher)`), then LocalPlayback \u2192 App (MpvLocalEngine keeps `PlaybackState _state = PlaybackState.Idle`, and PlaybackState is the enum declared in App/PlaybackController.cs). The Views \u2192 App edges of smell 1 (AiImportDialog\u2192AiCliLauncher, LiveView/PlayerView\u2192PlaybackState) also take part. Later commits kept the cycle alive and made it larger: e1991e7308 (+293 lines), f1bbae77f7 and 96434d1c40 reworked MpvLocalEngine and its state machine, which is still written in terms of App's PlaybackState. Several of the same commits (e1991e7308, f1bbae77f7, 96434d1c40) also extended PlayerView's use of the mpv engine.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Initial import: MainWindow\u2192Views, PlayerView\u2192MpvLocalEngine/MpvHost, and MpvLocalEngine\u2192PlaybackState (App) close the cycle"
+          },
+          {
+            "commit": "e1991e7308",
+            "change": "MpvLocalEngine (+293 lines) and PlayerView extended; the engine keeps reporting state through App's PlaybackState"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "MpvLocalEngine, PlayerView, PlaybackController and MainWindow all extended further"
+          },
+          {
+            "commit": "96434d1c40",
+            "change": "MpvLocalEngine extended again (+176 lines) and still coupled to App's PlaybackState"
+          }
+        ],
+        "why_problematic": "The mpv playback engine is meant to be a low-level, reusable component. Here it depends on an enum that lives next to the LibVLC PlaybackController in the app shell, and the shell reaches it only through PlayerView. Because of this three-namespace loop, the local playback engine cannot be extracted or tested without the views and the main window. Any change to PlaybackState also affects both playback back-ends and the player UI."
+      },
+      "grounding": {
+        "cited": 4,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [AiCliTool' AiCliLauncher' AiCliTaskMode' MainWindow' SectionNavigationState' AppPage' IAppHost' INavigationAware' INavigationVisibilityAware' AiSourceWatcher' ChangeKind' AppServices' DesktopUpdateService' PlaybackController' VodCacheService' InlineProgress<T>' VodCacheLog' VodDownloadManager' Job' VodPlayableSourceResolver' VodSourceProbeStatus' VodSourceHealthDisplay' VodSourceHealthProbe' LibVlcMediaDecodeProbe' WindowMessage' HlsAesDecryptMerger' VodCacheSession' CacheFile' PlaybackState' VodDownloadJobStatus' MediaDecodeProbeStatus' IMediaDecodeProbe' VodSourceProbeSampler]' [App]' [EmptyStringToVisibilityConverter]' [ImageLoader]' [LiveChannelViewModel]' [LocalCachePlaybackCatalog]' [OsdController]' [PlayerKeyboardHook' KbdLlHookStruct]' [VodCacheLookup]. LCC (Lack of Component Cohesion) = 0'21",
+        "Responsible classes": "OrionTV.Desktop.App.OsdController' OrionTV.Desktop.App.VodCacheLookup",
+        "Participating classes": "OrionTV.Desktop.App.AiCliTool; OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.AiCliTaskMode; OrionTV.Desktop.App.AiSourceWatcher; OrionTV.Desktop.App.ChangeKind; OrionTV.Desktop.App.App; OrionTV.Desktop.App.AppServices; OrionTV.Desktop.App.DesktopUpdateService; OrionTV.Desktop.App.EmptyStringToVisibilityConverter; OrionTV.Desktop.App.HlsAesDecryptMerger; OrionTV.Desktop.App.ImageLoader; OrionTV.Desktop.App.LiveChannelViewModel; OrionTV.Desktop.App.LocalCachePlaybackCatalog; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.SectionNavigationState; OrionTV.Desktop.App.AppPage; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.INavigationAware; OrionTV.Desktop.App.INavigationVisibilityAware; OrionTV.Desktop.App.OsdController; OrionTV.Desktop.App.PlaybackState; OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.PlayerKeyboardHook; OrionTV.Desktop.App.KbdLlHookStruct; OrionTV.Desktop.App.VodCacheLookup; OrionTV.Desktop.App.VodCacheSession; OrionTV.Desktop.App.CacheFile; OrionTV.Desktop.App.VodCacheService; OrionTV.Desktop.App.InlineProgress<T>; OrionTV.Desktop.App.VodCacheLog; OrionTV.Desktop.App.VodDownloadJobStatus; OrionTV.Desktop.App.VodDownloadManager; OrionTV.Desktop.App.Job; OrionTV.Desktop.App.VodPlayableSourceResolver; OrionTV.Desktop.App.VodSourceProbeStatus; OrionTV.Desktop.App.MediaDecodeProbeStatus; OrionTV.Desktop.App.IMediaDecodeProbe; OrionTV.Desktop.App.VodSourceProbeSampler; OrionTV.Desktop.App.VodSourceHealthDisplay; OrionTV.Desktop.App.VodSourceHealthProbe; OrionTV.Desktop.App.LibVlcMediaDecodeProbe; OrionTV.Desktop.App.WindowMessage"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/AiSourceWatcher.cs",
+        "desktop/OrionTV.Desktop.App/App.xaml.cs",
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/DesktopUpdateService.cs",
+        "desktop/OrionTV.Desktop.App/EmptyStringToVisibilityConverter.cs",
+        "desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs",
+        "desktop/OrionTV.Desktop.App/ImageLoader.cs",
+        "desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs",
+        "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/OsdController.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs",
+        "desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheLookup.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+        "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+        "desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs",
+        "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "2096e3da6c",
+        "f1bbae77f7",
+        "61f0607246",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 3,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "The initial import, b3ae88d60f, already put unrelated concerns into the root OrionTV.Desktop.App namespace: AI CLI launching (AiCliLauncher, AiCliTool, AiCliTaskMode), file watching (AiSourceWatcher), navigation (MainWindow, AppPage, IAppHost, INavigationAware), LibVLC playback (PlaybackController, PlaybackState), VOD caching (VodCacheService, VodCacheSession, CacheFile, VodCacheLog, HlsAesDecryptMerger), downloads (VodDownloadManager, Job), plus the App class, a WPF converter, ImageLoader, LiveChannelViewModel and OsdController. Classes such as App, EmptyStringToVisibilityConverter, ImageLoader, LiveChannelViewModel and OsdController share no relations with the rest, so they form separate groups. f1bbae77f7 added more unrelated features: DesktopUpdateService, PlayerKeyboardHook with KbdLlHookStruct (a new isolated group), VodCacheLookup (another isolated group), VodPlayableSourceResolver and the whole VodSourceHealthProbe family. e137971afc added LocalCachePlaybackCatalog (another isolated group), the SectionNavigationState and INavigationVisibilityAware navigation types, and InlineProgress<T> in VodCacheService.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Root namespace imported with AI-CLI, navigation, playback, caching, download, converter, image loading, live view-model and OSD concerns mixed together"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "Added DesktopUpdateService, PlayerKeyboardHook/KbdLlHookStruct, VodCacheLookup, VodPlayableSourceResolver and the VodSourceHealthProbe types to the same namespace"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "Added LocalCachePlaybackCatalog, SectionNavigationState, INavigationVisibilityAware and InlineProgress<T>"
+          }
+        ],
+        "why_problematic": "Low-level Win32 keyboard hooks, an HTTP self-updater, an HLS AES decryptor/cache proxy, source health probing and AI terminal launching all sit in one namespace next to the WPF shell. The namespace has no single reason to change, and its LCC is very low (0.21). A change to any one feature, such as caching or updates, touches the component every page depends on, and none of these features can be moved out or reused on its own."
+      },
+      "grounding": {
+        "cited": 3,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "God Component",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because the component contains high number of classes. Number of classes in the component are: 42",
+        "Responsible classes": "OrionTV.Desktop.App.AiCliTool' OrionTV.Desktop.App.AiCliTaskMode' OrionTV.Desktop.App.ChangeKind' OrionTV.Desktop.App.AppPage' OrionTV.Desktop.App.PlaybackState' OrionTV.Desktop.App.KbdLlHookStruct' OrionTV.Desktop.App.CacheFile' OrionTV.Desktop.App.VodDownloadJobStatus' OrionTV.Desktop.App.VodSourceProbeStatus' OrionTV.Desktop.App.MediaDecodeProbeStatus' OrionTV.Desktop.App.WindowMessage' OrionTV.Desktop.App.SectionNavigationState' OrionTV.Desktop.App.INavigationAware",
+        "Participating classes": "OrionTV.Desktop.App.AiCliTool; OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.AiCliTaskMode; OrionTV.Desktop.App.AiSourceWatcher; OrionTV.Desktop.App.ChangeKind; OrionTV.Desktop.App.App; OrionTV.Desktop.App.AppServices; OrionTV.Desktop.App.DesktopUpdateService; OrionTV.Desktop.App.EmptyStringToVisibilityConverter; OrionTV.Desktop.App.HlsAesDecryptMerger; OrionTV.Desktop.App.ImageLoader; OrionTV.Desktop.App.LiveChannelViewModel; OrionTV.Desktop.App.LocalCachePlaybackCatalog; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.SectionNavigationState; OrionTV.Desktop.App.AppPage; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.INavigationAware; OrionTV.Desktop.App.INavigationVisibilityAware; OrionTV.Desktop.App.OsdController; OrionTV.Desktop.App.PlaybackState; OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.PlayerKeyboardHook; OrionTV.Desktop.App.KbdLlHookStruct; OrionTV.Desktop.App.VodCacheLookup; OrionTV.Desktop.App.VodCacheSession; OrionTV.Desktop.App.CacheFile; OrionTV.Desktop.App.VodCacheService; OrionTV.Desktop.App.InlineProgress<T>; OrionTV.Desktop.App.VodCacheLog; OrionTV.Desktop.App.VodDownloadJobStatus; OrionTV.Desktop.App.VodDownloadManager; OrionTV.Desktop.App.Job; OrionTV.Desktop.App.VodPlayableSourceResolver; OrionTV.Desktop.App.VodSourceProbeStatus; OrionTV.Desktop.App.MediaDecodeProbeStatus; OrionTV.Desktop.App.IMediaDecodeProbe; OrionTV.Desktop.App.VodSourceProbeSampler; OrionTV.Desktop.App.VodSourceHealthDisplay; OrionTV.Desktop.App.VodSourceHealthProbe; OrionTV.Desktop.App.LibVlcMediaDecodeProbe; OrionTV.Desktop.App.WindowMessage"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/AiSourceWatcher.cs",
+        "desktop/OrionTV.Desktop.App/App.xaml.cs",
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/DesktopUpdateService.cs",
+        "desktop/OrionTV.Desktop.App/EmptyStringToVisibilityConverter.cs",
+        "desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs",
+        "desktop/OrionTV.Desktop.App/ImageLoader.cs",
+        "desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs",
+        "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/OsdController.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs",
+        "desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheLookup.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+        "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+        "desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs",
+        "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "2096e3da6c",
+        "f1bbae77f7",
+        "61f0607246",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 4,
+        "emerged_in": "f1bbae77f7",
+        "emerged_date": "2026-07-27",
+        "how": "Counting non-record types the way Designite lists them, the initial import b3ae88d60f put about 26 classes, interfaces and enums into the root OrionTV.Desktop.App namespace. These included AiCliLauncher, AiSourceWatcher, App, AppServices, MainWindow, the navigation types, PlaybackController, VodCacheService and its helpers, VodDownloadManager and Job, and LocalMediaRemuxer. Commit f1bbae77f7 ('prepare desktop 1.3.15 release') added 13 more types in one step: DesktopUpdateService, PlayerKeyboardHook and KbdLlHookStruct, VodCacheLookup, VodPlayableSourceResolver, and VodSourceHealthProbe.cs with VodSourceProbeStatus, MediaDecodeProbeStatus, IMediaDecodeProbe, VodSourceProbeSampler, VodSourceHealthDisplay, VodSourceHealthProbe, LibVlcMediaDecodeProbe and WindowMessage. That brought the count to about 39 and past the class-count threshold. 96434d1c40 removed LocalMediaRemuxer (about 38). e137971afc added LocalCachePlaybackCatalog, SectionNavigationState, INavigationVisibilityAware and InlineProgress<T>, which gives the 42 classes reported. The exact threshold is assumed to be Designite's default of about 30 classes; the counts themselves were checked in the code.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Root namespace created with about 26 types"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "13 more types (update service, keyboard hook, cache lookup, playable-source resolver, source health probe family) push the count to about 39"
+          },
+          {
+            "commit": "96434d1c40",
+            "change": "LocalMediaRemuxer removed (minor reduction)"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "LocalCachePlaybackCatalog, SectionNavigationState, INavigationVisibilityAware and InlineProgress<T> bring it to 42"
+          }
+        ],
+        "why_problematic": "Almost every non-UI service of the desktop player lands in the single root namespace, which has become a catch-all. The project already has separate sub-namespaces (LocalPlayback, LiveTranslation, Controls), so features such as caching, source probing and updating could have their own homes. Instead, each release adds more classes here, and the namespace becomes harder to understand and to change safely."
+      },
+      "grounding": {
+        "cited": 4,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Unstable Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because this component depends on other components that are less stable than itself. This component depends on following less stable component(s): OrionTV.Desktop.App.Views",
+        "Responsible classes": "OrionTV.Desktop.App.AiImportDialog' OrionTV.Desktop.App.DetailView' OrionTV.Desktop.App.FavoritesView' OrionTV.Desktop.App.HomeView' OrionTV.Desktop.App.LiveView' OrionTV.Desktop.App.LocalVideoView' OrionTV.Desktop.App.PlayerView' OrionTV.Desktop.App.SearchView' OrionTV.Desktop.App.SettingsView",
+        "Participating classes": "OrionTV.Desktop.App.AiImportDialog; OrionTV.Desktop.App.DetailView; OrionTV.Desktop.App.FavoritesView; OrionTV.Desktop.App.HomeView; OrionTV.Desktop.App.LiveView; OrionTV.Desktop.App.LocalVideoView; OrionTV.Desktop.App.PlayerView; OrionTV.Desktop.App.SearchView; OrionTV.Desktop.App.SettingsView"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "c601eb789d",
+        "f1bbae77f7",
+        "61f0607246",
+        "e1991e7308",
+        "fe42a7f077",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 5,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "The dependency was introduced with the initial import, b3ae88d60f. MainWindow in the root namespace imports OrionTV.Desktop.App.Views and creates every page. The Views namespace depends on many namespaces (Core, the root App namespace, Controls, LiveTranslation, LocalPlayback), but only MainWindow depends on it. So Views is highly unstable, while the root namespace is depended on by Views, Controls (VideoCardControl uses ImageLoader) and LocalPlayback (MpvLocalEngine uses PlaybackState), which makes it comparatively stable. The namespace-level dependency graph checked at the analyzed version is the same as in the initial import, so the stable-depends-on-unstable relation has existed since then. Later commits made it heavier: f1bbae77f7 and e137971afc grew MainWindow's page management, and the Views themselves change in almost every commit (f1bbae77f7, 96434d1c40, e137971afc).",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "MainWindow (root) depends on all Views, which in turn depend on Core, Controls, LiveTranslation, LocalPlayback and the root"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "MainWindow expanded (+207 lines) together with large rewrites of PlayerView, DetailView, HomeView and SettingsView"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "MainWindow's navigation reworked around SectionNavigationState, and the Views changed again (DetailView, HomeView, LiveView, LocalVideoView)"
+          }
+        ],
+        "why_problematic": "The root namespace holds services that Controls and LocalPlayback rely on, but it also hard-wires the concrete, constantly changing page classes through MainWindow.CreateView. Every page rewrite, which happens in nearly every release here, can force changes in the shell that the rest of the app depends on."
+      },
+      "grounding": {
+        "cited": 3,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Unstable Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.LocalPlayback",
+        "Description": "The tool detected the smell in this component because this component depends on other components that are less stable than itself. This component depends on following less stable component(s): OrionTV.Desktop.App",
+        "Responsible classes": "OrionTV.Desktop.App.LocalPlayback.PlaybackState",
+        "Participating classes": "OrionTV.Desktop.App.LocalPlayback.PlaybackState"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs"
+      ],
+      "commits": [
+        "f1bbae77f7",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 6,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "LocalPlayback's only outgoing project dependency has been the root OrionTV.Desktop.App namespace, and that is the edge the smell flags. MpvLocalEngine uses the PlaybackState enum that is declared in PlaybackController.cs; Designite attributes the participating class to that file. The edge is present in the initial import b3ae88d60f (`private PlaybackState _state = PlaybackState.Idle;`). The root namespace in turn depends on Core and Views, so its own instability is relatively high. The namespace-level dependency structure is the same at the analyzed version as in b3ae88d60f, so the smell is dated to that import; this is an inference from that unchanged structure. Commits e1991e7308, f1bbae77f7 and 96434d1c40 each extended MpvLocalEngine's state machine on top of App's PlaybackState and kept the dependency in place. f1bbae77f7 also changed PlaybackController.cs, where the enum lives.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "MpvLocalEngine is introduced, storing and raising App's PlaybackState enum"
+          },
+          {
+            "commit": "e1991e7308",
+            "change": "MpvLocalEngine reworked (+293 lines) and still reports PlaybackState"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "PlaybackController.cs (which defines PlaybackState) and MpvLocalEngine both modified"
+          },
+          {
+            "commit": "96434d1c40",
+            "change": "MpvLocalEngine extended further and still coupled to the root's PlaybackState"
+          }
+        ],
+        "why_problematic": "The self-contained mpv engine depends on the most volatile part of the app (the root namespace that also holds MainWindow and dozens of services) only to reuse a five-value enum. A change made for the LibVLC PlaybackController can force recompiling and re-testing the local-playback back-end. A shared playback-state abstraction in a stable place would remove this coupling."
+      },
+      "grounding": {
+        "cited": 4,
+        "unknown_commits": [],
+        "other_commits": [
+          "96434d1c40",
+          "e1991e7308"
+        ],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [AiImportDialog]' [DetailView]' [FavoritesView]' [HomeView]' [LiveView]' [LocalVideoView' ActiveJobItem' LocalCacheItem' LocalMediaCardItem]' [PlayerShortcutCommand' PlayerShortcutMap' PlayerView' LoadingNoticeMode' PlayerSourceSwitchPolicy' PlayerEpisodeAdvancePolicy]' [SearchView]' [SettingsView]. LCC (Lack of Component Cohesion) = 0'53",
+        "Responsible classes": "OrionTV.Desktop.App.Views.LocalVideoView' OrionTV.Desktop.App.Views.ActiveJobItem' OrionTV.Desktop.App.Views.LocalCacheItem' OrionTV.Desktop.App.Views.LocalMediaCardItem' OrionTV.Desktop.App.Views.AiImportDialog' OrionTV.Desktop.App.Views.DetailView' OrionTV.Desktop.App.Views.FavoritesView' OrionTV.Desktop.App.Views.HomeView' OrionTV.Desktop.App.Views.LiveView' OrionTV.Desktop.App.Views.SearchView' OrionTV.Desktop.App.Views.SettingsView",
+        "Participating classes": "OrionTV.Desktop.App.Views.AiImportDialog; OrionTV.Desktop.App.Views.DetailView; OrionTV.Desktop.App.Views.FavoritesView; OrionTV.Desktop.App.Views.HomeView; OrionTV.Desktop.App.Views.LiveView; OrionTV.Desktop.App.Views.LocalVideoView; OrionTV.Desktop.App.Views.ActiveJobItem; OrionTV.Desktop.App.Views.LocalCacheItem; OrionTV.Desktop.App.Views.LocalMediaCardItem; OrionTV.Desktop.App.Views.PlayerShortcutCommand; OrionTV.Desktop.App.Views.PlayerShortcutMap; OrionTV.Desktop.App.Views.PlayerSourceSwitchPolicy; OrionTV.Desktop.App.Views.PlayerEpisodeAdvancePolicy; OrionTV.Desktop.App.Views.PlayerView; OrionTV.Desktop.App.Views.LoadingNoticeMode; OrionTV.Desktop.App.Views.SearchView; OrionTV.Desktop.App.Views.SettingsView"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "c601eb789d",
+        "f1bbae77f7",
+        "61f0607246",
+        "e1991e7308",
+        "fe42a7f077",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 7,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "The Views namespace was created in the initial import b3ae88d60f with nine page classes: AiImportDialog, DetailView, FavoritesView, HomeView, LiveView, LocalVideoView (with nested ActiveJobItem and LocalCacheItem), PlayerView (with LoadingNoticeMode), SearchView and SettingsView. None of them reference each other; they only meet through the IAppHost navigation in the root namespace. So the component already consisted of independent groups for AI import, catalog, favorites, live TV, local video, playback, search and settings. fe42a7f077 added LocalMediaCardItem to LocalVideoView. f1bbae77f7 added PlayerShortcutCommand, PlayerShortcutMap, PlayerSourceSwitchPolicy and PlayerEpisodeAdvancePolicy as top-level types inside PlayerView.xaml.cs, which put more feature logic into the views namespace. e137971afc changed LocalVideoView, HomeView, DetailView and LiveView substantially again.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Nine unrelated page classes created in the Views namespace"
+          },
+          {
+            "commit": "fe42a7f077",
+            "change": "LocalVideoView gains a local media library and the LocalMediaCardItem type"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "Player shortcut and source-switch/episode-advance policy types added inside PlayerView.xaml.cs"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "Large further changes to LocalVideoView, HomeView, DetailView and LiveView"
+          }
+        ],
+        "why_problematic": "Each page is a separate feature with large code-behind (PlayerView is well over 1,000 lines), and policy logic such as source switching and episode advancing lives inside the view files. Changes to live TV, local media, AI import or settings all land in the same namespace. The LCC of 0.53 confirms there is no shared purpose apart from being WPF pages."
+      },
+      "grounding": {
+        "cited": 4,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App' OrionTV.Desktop.Core",
+        "Responsible classes": "OrionTV.Desktop.App.ImageLoader' OrionTV.Desktop.Core.FavoriteStore' OrionTV.Desktop.App.AppServices' OrionTV.Desktop.Core.IVodSourceClient' OrionTV.Desktop.Core.VodSourceClientFactory' OrionTV.Desktop.Core.PlayRecordStore' OrionTV.Desktop.Core.PlaybackResumePolicy' OrionTV.Desktop.App.IAppHost' OrionTV.Desktop.Core.LocalMediaStore' OrionTV.Desktop.App.LocalCachePlaybackCatalog' OrionTV.Desktop.App.VodCacheService' OrionTV.Desktop.Core.LocalMediaNaming' OrionTV.Desktop.Core.EpisodeLabelFormatter' OrionTV.Desktop.App.OsdController' OrionTV.Desktop.Core.DesktopLiveSourceSettings' OrionTV.Desktop.Core.M3uParser' OrionTV.Desktop.App.VodDownloadManager' OrionTV.Desktop.Core.CatalogService' OrionTV.Desktop.Core.SearchResultSources' OrionTV.Desktop.App.VodSourceHealthProbe' OrionTV.Desktop.App.VodSourceHealthDisplay",
+        "Participating classes": "OrionTV.Desktop.App.ImageLoader; OrionTV.Desktop.Core.FavoriteStore; OrionTV.Desktop.App.AppServices; OrionTV.Desktop.Core.IVodSourceClient; OrionTV.Desktop.Core.VodSourceClientFactory; OrionTV.Desktop.Core.PlayRecordStore; OrionTV.Desktop.Core.PlaybackResumePolicy; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.Core.LocalMediaStore; OrionTV.Desktop.App.LocalCachePlaybackCatalog; OrionTV.Desktop.App.VodCacheService; OrionTV.Desktop.Core.LocalMediaNaming; OrionTV.Desktop.Core.EpisodeLabelFormatter; OrionTV.Desktop.App.OsdController; OrionTV.Desktop.Core.DesktopLiveSourceSettings; OrionTV.Desktop.Core.M3uParser; OrionTV.Desktop.App.VodDownloadManager; OrionTV.Desktop.Core.CatalogService; OrionTV.Desktop.Core.SearchResultSources; OrionTV.Desktop.App.VodSourceHealthProbe; OrionTV.Desktop.App.VodSourceHealthDisplay"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/ImageLoader.cs",
+        "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/OsdController.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+        "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+        "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "f1bbae77f7",
+        "61f0607246",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 8,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "From the first commit b3ae88d60f, the Views implemented the catalog, favorites, history and live-source concern by combining App-side helpers (AppServices, IAppHost, ImageLoader, VodCacheService, VodDownloadManager, OsdController) with Core types (CatalogService, FavoriteStore, PlayRecordStore, IVodSourceClient, VodSourceClientFactory, M3uParser, DesktopLiveSourceSettings, SearchResultSources). So this media-catalog/playback-history concern was split between OrionTV.Desktop.App and OrionTV.Desktop.Core from the start. fe42a7f077 added LocalMediaStore and LocalMediaNaming to Core for the local media library. f1bbae77f7 added PlaybackResumePolicy and EpisodeLabelFormatter to Core, and VodSourceHealthProbe/VodSourceHealthDisplay to App, which DetailView and PlayerView use. e137971afc added LocalCachePlaybackCatalog to App, which HomeView and LocalVideoView use together with Core's LocalMediaNaming and EpisodeLabelFormatter. That completes the reported set of classes.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Concern split across App (AppServices, IAppHost, ImageLoader, VodCacheService, VodDownloadManager, OsdController) and Core (CatalogService, FavoriteStore, PlayRecordStore, VodSourceClientFactory, M3uParser, DesktopLiveSourceSettings, SearchResultSources)"
+          },
+          {
+            "commit": "fe42a7f077",
+            "change": "Core gains LocalMediaStore/LocalMediaNaming for the local media library, used by the views"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "Core gains PlaybackResumePolicy and EpisodeLabelFormatter; App gains VodSourceHealthProbe/VodSourceHealthDisplay"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "App gains LocalCachePlaybackCatalog, which HomeView/LocalVideoView combine with Core naming and label helpers"
+          }
+        ],
+        "why_problematic": "Episode matching, resume logic and cache lookup are split. Part of it is in the testable Core library (EpisodeLabelFormatter, PlaybackResumePolicy, LocalMediaNaming) and part is in the WPF app namespace (LocalCachePlaybackCatalog, VodSourceHealthDisplay, VodCacheService). As a result, a change in how episodes or history are resolved requires coordinated edits in both components and in several views."
+      },
+      "grounding": {
+        "cited": 4,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.Controls' OrionTV.Desktop.Core",
+        "Responsible classes": "OrionTV.Desktop.App.Controls.CardGrid' OrionTV.Desktop.Core.CatalogService' OrionTV.Desktop.Core.CatalogPlayabilityCache",
+        "Participating classes": "OrionTV.Desktop.App.Controls.CardGrid; OrionTV.Desktop.Core.CatalogService; OrionTV.Desktop.Core.CatalogPlayabilityCache"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs"
+      ],
+      "commits": [
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 9,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "This was present in the initial import b3ae88d60f. CardGrid (OrionTV.Desktop.App.Controls) displays and replaces CatalogItem cards. The Core types CatalogService and CatalogPlayabilityCache (exposed through AppServices.Catalog and AppServices.PlayabilityCache) fetch the catalog and cache playability. HomeView, SearchView and FavoritesView combine the two: HomeView calls Services.Catalog.GetHomeDataAsync, checks Services.PlayabilityCache, and then updates its CardGrid. So the 'catalog grid browsing' concern is spread over Controls and Core. The relevant parts of CardGrid did not change structurally afterwards. f1bbae77f7 extended CatalogService and CatalogModels.cs (where CatalogPlayabilityCache lives), and e137971afc changed HomeView's use of them, which kept the concern spread out.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "CardGrid (Controls) and CatalogService/CatalogPlayabilityCache (Core) both realise catalog browsing, wired together in HomeView/SearchView"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "CatalogService and CatalogModels (CatalogPlayabilityCache) extended"
+          }
+        ],
+        "why_problematic": "Showing a playable catalog grid needs the control's item replacement (ReplaceItem), Core's playability cache and its generation counter, and the coordinating view. A change to how playability is shown or cached therefore has to stay consistent across Controls, Core and every page that hosts a CardGrid."
+      },
+      "grounding": {
+        "cited": 2,
+        "unknown_commits": [],
+        "other_commits": [
+          "f1bbae77f7"
+        ],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App' OrionTV.Desktop.App.LiveTranslation",
+        "Responsible classes": "OrionTV.Desktop.App.PlaybackController' OrionTV.Desktop.App.LiveTranslation.LiveTranslationController' OrionTV.Desktop.App.IAppHost' OrionTV.Desktop.App.AppServices",
+        "Participating classes": "OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.LiveTranslation.LiveTranslationController; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.AppServices"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/LiveTranslation/LiveTranslationController.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "f1bbae77f7",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 10,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "This was present in the initial import b3ae88d60f. LiveView creates a LibVLC PlaybackController from the root namespace (`new PlaybackController(_host.Services.LibVlc, Dispatcher)`, using AppServices via IAppHost). It also creates a LiveTranslationController from OrionTV.Desktop.App.LiveTranslation, which taps the same audio through LibVlcAudioTap. The live playback-with-translation concern is therefore split between the root namespace and LiveTranslation, and LiveView ties them together. f1bbae77f7 extended PlaybackController (+110 lines), AppServices and Navigation, and e137971afc changed LiveView again (+115 lines) and Navigation, keeping the split.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "PlaybackController/AppServices/IAppHost (root) and LiveTranslationController (LiveTranslation) together realise live playback with translation"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "PlaybackController, AppServices and Navigation extended"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "LiveView and Navigation (IAppHost area) changed again"
+          }
+        ],
+        "why_problematic": "Live-translated playback needs the LibVLC controller and LibVLC instance from the root namespace and the translation pipeline from LiveTranslation, coordinated by hand in LiveView. Changing how audio is captured or how playback state works means editing two namespaces plus the view. Neither part can be reused on its own."
+      },
+      "grounding": {
+        "cited": 3,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.Core' OrionTV.Desktop.App.LiveTranslation",
+        "Responsible classes": "OrionTV.Desktop.Core.GeminiLiveTranslateProtocol' OrionTV.Desktop.App.LiveTranslation.OpenAiCredentialStore' OrionTV.Desktop.Core.RollingSubtitleBuffer' OrionTV.Desktop.App.LiveTranslation.LiveTranslationController",
+        "Participating classes": "OrionTV.Desktop.Core.GeminiLiveTranslateProtocol; OrionTV.Desktop.App.LiveTranslation.OpenAiCredentialStore; OrionTV.Desktop.Core.RollingSubtitleBuffer; OrionTV.Desktop.App.LiveTranslation.LiveTranslationController"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/LiveTranslation/LiveTranslationController.cs",
+        "desktop/OrionTV.Desktop.App/LiveTranslation/OpenAiCredentialStore.cs"
+      ],
+      "commits": [
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 11,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "This was present in the initial import b3ae88d60f. The live translation concern is split between Core (GeminiLiveTranslateProtocol, and RollingSubtitleBuffer in RealtimeTranslationProtocol.cs) and App.LiveTranslation (LiveTranslationController, OpenAiCredentialStore, plus the clients). The views drive it from both sides: LiveView reads API keys via OpenAiCredentialStore.ReadApiKeyForProvider and creates LiveTranslationController, and SettingsView saves and deletes keys through OpenAiCredentialStore. None of the participating files changed structurally in later commits. The only later change found is the string rename in 0c5495360e, which did not affect the split.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Translation protocol/subtitle buffering placed in Core, while controller and credential storage are in App.LiveTranslation; LiveView and SettingsView use both"
+          }
+        ],
+        "why_problematic": "Protocol framing and subtitle buffering live in Core, but the session controller and credential storage live in the WPF project. Adding or changing a translation provider means touching Core, LiveTranslation, LiveView and SettingsView together."
+      },
+      "grounding": {
+        "cited": 1,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.LocalPlayback' OrionTV.Desktop.App",
+        "Responsible classes": "OrionTV.Desktop.App.LocalPlayback.MpvHost' OrionTV.Desktop.App.PlaybackController' OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine' OrionTV.Desktop.App.IAppHost' OrionTV.Desktop.App.AppServices",
+        "Participating classes": "OrionTV.Desktop.App.LocalPlayback.MpvHost; OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.AppServices"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/LocalPlayback/MpvHost.cs",
+        "desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "f1bbae77f7",
+        "e1991e7308",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 12,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "This was present in the initial import b3ae88d60f. Video playback is implemented twice: by PlaybackController (LibVLC) in the root namespace, reached through AppServices/IAppHost, and by MpvHost plus MpvLocalEngine in OrionTV.Desktop.App.LocalPlayback. PlayerView hosts both (an MpvHost in XAML, `new PlaybackController(libVlc, Dispatcher)` and `new MpvLocalEngine(hwnd, Dispatcher)`). Later commits kept growing both sides in parallel. fe42a7f077 changed MpvHost and MpvLocalEngine for local media playback. e1991e7308 extended MpvHost (+77 lines) and MpvLocalEngine (+293 lines). f1bbae77f7 extended both PlaybackController (+110 lines) and MpvLocalEngine (+153 lines) as well as AppServices and Navigation, and 96434d1c40 extended MpvLocalEngine again.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "LibVLC PlaybackController (root) and MpvHost/MpvLocalEngine (LocalPlayback) both implement playback, combined in PlayerView"
+          },
+          {
+            "commit": "fe42a7f077",
+            "change": "MpvHost/MpvLocalEngine adapted for local media library playback"
+          },
+          {
+            "commit": "e1991e7308",
+            "change": "MpvHost and MpvLocalEngine extended to keep mpv controls aligned with the player UI"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "PlaybackController, MpvLocalEngine, AppServices and Navigation all extended"
+          },
+          {
+            "commit": "96434d1c40",
+            "change": "MpvLocalEngine extended further"
+          }
+        ],
+        "why_problematic": "The two playback engines live in different namespaces and share no common interface, only the PlaybackState enum. PlayerView must branch between them. Each playback feature (seeking, state, controls) has to be implemented and kept consistent in both places, as the paired changes across these commits show."
+      },
+      "grounding": {
+        "cited": 5,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "God Component",
+        "Project": "OrionTV.Desktop.Core",
+        "Namespace": "OrionTV.Desktop.Core",
+        "Description": "The tool detected the smell in this component because the component contains high number of classes. Number of classes in the component are: 56",
+        "Responsible classes": "OrionTV.Desktop.Core.CatalogPlayabilityStatus' OrionTV.Desktop.Core.PlaybackStartupSignal' OrionTV.Desktop.Core.ChannelHealth' OrionTV.Desktop.Core.MediaProbeStatus' OrionTV.Desktop.Core.AppleCmsVodItem' OrionTV.Desktop.Core.RealtimeTranslationEventKind' OrionTV.Desktop.Core.CatalogPlayabilityBadge' OrionTV.Desktop.Core.PlaybackFallbackSelector' OrionTV.Desktop.Core.PlaybackStartupPolicy' OrionTV.Desktop.Core.VideoSourceMerger' OrionTV.Desktop.Core.NaturalPathComparer' OrionTV.Desktop.Core.VideoSourceProtocols' OrionTV.Desktop.Core.DesktopPaths' OrionTV.Desktop.Core.DesktopSettingsMigration' OrionTV.Desktop.Core.CatalogTitleMatcher' OrionTV.Desktop.Core.PlaybackMediaOptions' OrionTV.Desktop.Core.ChannelHealthDisplay' OrionTV.Desktop.Core.DesktopSettingsForm' OrionTV.Desktop.Core.SettingsStore' OrionTV.Desktop.Core.AppleCmsMapper' OrionTV.Desktop.Core.PlaybackResumePolicy' OrionTV.Desktop.Core.AiImportPromptBuilder' OrionTV.Desktop.Core.VodSourceClientFactory' OrionTV.Desktop.Core.M3uParser' OrionTV.Desktop.Core.EpisodeLabelFormatter' OrionTV.Desktop.Core.Pcm16TranslationFrameBuffer' OrionTV.Desktop.Core.VodCacheSettings",
+        "Participating classes": "OrionTV.Desktop.Core.AppleCmsUrlBuilder; OrionTV.Desktop.Core.AppleCmsEpisodeParser; OrionTV.Desktop.Core.SearchResultSources; OrionTV.Desktop.Core.AppleCmsMapper; OrionTV.Desktop.Core.AppleCmsClient; OrionTV.Desktop.Core.CatalogPlayabilityStatus; OrionTV.Desktop.Core.CatalogTitleMatcher; OrionTV.Desktop.Core.CatalogPlayabilityBadge; OrionTV.Desktop.Core.CatalogPlayabilityCache; OrionTV.Desktop.Core.PlaybackResumePolicy; OrionTV.Desktop.Core.PlaybackFallbackSelector; OrionTV.Desktop.Core.PlaybackMediaOptions; OrionTV.Desktop.Core.PlaybackStartupWatchdog; OrionTV.Desktop.Core.PlaybackStartupSignal; OrionTV.Desktop.Core.PlaybackStartupPolicy; OrionTV.Desktop.Core.CatalogService; OrionTV.Desktop.Core.ChannelHealth; OrionTV.Desktop.Core.MediaProbeStatus; OrionTV.Desktop.Core.ChannelHealthScoring; OrionTV.Desktop.Core.ChannelHealthDisplay; OrionTV.Desktop.Core.ChannelHealthProbe; OrionTV.Desktop.Core.DeepgramSttProtocol; OrionTV.Desktop.Core.DesktopLiveSourceSettings; OrionTV.Desktop.Core.DoubanClient; OrionTV.Desktop.Core.DoubaoAstProtocol; OrionTV.Desktop.Core.ExtraVideoSourcesStore; OrionTV.Desktop.Core.VideoSourceMerger; OrionTV.Desktop.Core.AiImportPromptBuilder; OrionTV.Desktop.Core.GeminiLiveTranslateProtocol; OrionTV.Desktop.Core.HlsAdSkip; OrionTV.Desktop.Core.HomeCategoryMatcher; OrionTV.Desktop.Core.IVodSourceClient; OrionTV.Desktop.Core.VodSourceClientFactory; OrionTV.Desktop.Core.UnsupportedVodSourceClient; OrionTV.Desktop.Core.LocalMediaNaming; OrionTV.Desktop.Core.NaturalPathComparer; OrionTV.Desktop.Core.LocalMediaStore; OrionTV.Desktop.Core.JsonDictionaryStore<T>; OrionTV.Desktop.Core.FavoriteStore; OrionTV.Desktop.Core.PlayRecordStore; OrionTV.Desktop.Core.M3uParser; OrionTV.Desktop.Core.MacCmsJsonClient; OrionTV.Desktop.Core.MacCmsXmlClient; OrionTV.Desktop.Core.VideoSourceProtocols; OrionTV.Desktop.Core.EpisodeLabelFormatter; OrionTV.Desktop.Core.AppleCmsVodItem; OrionTV.Desktop.Core.RealtimeTranslationEventKind; OrionTV.Desktop.Core.RealtimeTranslationProtocol; OrionTV.Desktop.Core.Pcm16TranslationFrameBuffer; OrionTV.Desktop.Core.RollingSubtitleBuffer; OrionTV.Desktop.Core.DesktopPaths; OrionTV.Desktop.Core.VodCacheSettings; OrionTV.Desktop.Core.DesktopSettingsMigration; OrionTV.Desktop.Core.DesktopSettingsForm; OrionTV.Desktop.Core.SettingsStore; OrionTV.Desktop.Core.VideoSourceSubscriptionParser"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.Core/AppleCms.cs",
+        "desktop/OrionTV.Desktop.Core/CatalogModels.cs",
+        "desktop/OrionTV.Desktop.Core/CatalogService.cs",
+        "desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs",
+        "desktop/OrionTV.Desktop.Core/DeepgramSttProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/DesktopLiveSources.cs",
+        "desktop/OrionTV.Desktop.Core/DoubanClient.cs",
+        "desktop/OrionTV.Desktop.Core/DoubaoAstProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/ExtraVideoSources.cs",
+        "desktop/OrionTV.Desktop.Core/GeminiLiveTranslateProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/HlsAdSkip.cs",
+        "desktop/OrionTV.Desktop.Core/HomeCategoryMatcher.cs",
+        "desktop/OrionTV.Desktop.Core/IVodSourceClient.cs",
+        "desktop/OrionTV.Desktop.Core/LocalMediaLibrary.cs",
+        "desktop/OrionTV.Desktop.Core/LocalStore.cs",
+        "desktop/OrionTV.Desktop.Core/M3uParser.cs",
+        "desktop/OrionTV.Desktop.Core/MacCmsJsonClient.cs",
+        "desktop/OrionTV.Desktop.Core/MacCmsXmlClient.cs",
+        "desktop/OrionTV.Desktop.Core/Models.cs",
+        "desktop/OrionTV.Desktop.Core/RealtimeTranslationProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/Settings.cs",
+        "desktop/OrionTV.Desktop.Core/VideoSourceSubscriptionParser.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "f1bbae77f7",
+        "fe42a7f077",
+        "0c5495360e",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 1,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "The smell was already there in the first commit of the desktop Core project. Commit b3ae88d60f (\"feat: publish source-free OrionTV\") added OrionTV.Desktop.Core as a single import with 51 class, interface and enum types, which is far above Designite's class-count threshold. That import already mixed many unrelated concerns:\n- clients for the Apple CMS and MacCMS (JSON and XML) video-source APIs (AppleCms.cs, MacCmsJsonClient, MacCmsXmlClient, IVodSourceClient/VodSourceClientFactory/UnsupportedVodSourceClient);\n- the Douban client;\n- catalog and playback policies (CatalogModels.cs with CatalogPlayabilityCache, PlaybackStartupWatchdog/Policy, PlaybackFallbackSelector, PlaybackMediaOptions) and CatalogService;\n- live-channel health probing (ChannelHealthProbe.cs);\n- the M3U parser and HLS ad skipping;\n- real-time translation and speech-to-text protocols (Deepgram, Doubao, Gemini, RealtimeTranslationProtocol and its buffers);\n- JSON persistence stores (LocalStore.cs);\n- settings and paths (Settings.cs);\n- source subscriptions and merging (ExtraVideoSources.cs, VideoSourceSubscriptionParser).\n\nNeither 0c5495360e (rename) nor 4a7b4a2362 (version bump) touched Core. Two later commits made it worse:\n- fe42a7f077 (\"add local media library playback\") added LocalMediaLibrary.cs with LocalMediaNaming and LocalMediaStore, bringing the count to 53.\n- f1bbae77f7 (\"prepare desktop 1.3.15 release\") added PlaybackResumePolicy to CatalogModels.cs, the MediaProbeStatus enum to ChannelHealthProbe.cs (which grew by about 527 lines) and EpisodeLabelFormatter to Models.cs, bringing the count to 56.\n\nThe next two commits kept the smell alive without adding classes. 96434d1c40 only bumped the Core csproj. e137971afc grew LocalStore.cs (PlayRecordStore history logic) but added no new types.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Initial import of OrionTV.Desktop.Core with 51 types covering VOD API clients, Douban, catalog and playback policies, channel health probing, M3U/HLS handling, AI translation protocols, local stores and settings. The God Component is already present."
+          },
+          {
+            "commit": "fe42a7f077",
+            "change": "Added LocalMediaLibrary.cs (LocalMediaNaming, LocalMediaStore) and extended LocalStore.cs and Settings.cs, giving the component a local media library responsibility (53 types)."
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "Added PlaybackResumePolicy, the MediaProbeStatus enum and EpisodeLabelFormatter, and greatly expanded ChannelHealthProbe.cs, CatalogModels.cs and AppleCms.cs (56 types)."
+          },
+          {
+            "commit": "e137971afc",
+            "change": "Extended LocalStore.cs with play-record history logic, adding more to the component without splitting it."
+          }
+        ],
+        "why_problematic": "OrionTV.Desktop.Core is a single catch-all assembly that holds HTTP clients for several VOD protocols, Douban metadata, live-stream health probing, HLS ad skipping, protocols for three different AI translation and speech-to-text vendors, playback startup and resume policies, and JSON file persistence. These concerns have nothing to do with each other. Any change, such as a Gemini protocol tweak or a new MacCMS field, touches and rebuilds the same component that the WPF app depends on everywhere. The component cannot be reused in parts (for example, only the source clients), and with 56 types and no sub-namespaces it is hard to see where a responsibility lives."
+      },
+      "grounding": {
+        "cited": 4,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.Tests",
+        "Namespace": "OrionTV.Desktop.Tests",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [AiCliLauncherTests]' [AppleCmsServiceTests' StubHandler' VodProtocolTests]' [ChannelHealthScoringTests' RecordingHandler' FlvResponseHandler' HtmlResponseHandler' MisleadingHtmlResponseHandler' EncryptedHlsHandler' HtmlSegmentHandler' VariantRecordingHandler]' [DesktopSettingsTests]' [LocalStoreTests' TestStringStore]' [DesktopUpdateServiceTests' StubHttpMessageHandler' InlineProgress]' [ExtraVideoSourcesTests]' [HlsAdSkipTests]' [HomeCategoryMatcherTests]' [LocalCachePlaybackCatalogTests]' [LocalMediaLibraryTests]' [M3uParserTests]' [MpvLocalEngineTests]' [PlaybackResumePolicyTests]' [WpfNavigationCollection' PlayerNavigationSurfaceTests]' [PlayerShortcutTests]' [PlayRecordHistoryTests]' [RealtimeTranslationProtocolTests]' [GeminiLiveTranslateProtocolTests]' [DeepgramSttProtocolTests]' [DoubaoAstProtocolTests]' [SubscriptionParserTests]' [VodCacheLookupTests]' [VodCacheServiceTests' InlineProgress<T>' BlockingFirstProgress' FakeHlsServer]' [VodSourceHealthProbeTests' StubDecodeProbe]. LCC (Lack of Component Cohesion) = 0'6",
+        "Responsible classes": "OrionTV.Desktop.Tests.AppleCmsServiceTests' OrionTV.Desktop.Tests.StubHandler' OrionTV.Desktop.Tests.VodProtocolTests' OrionTV.Desktop.Tests.DesktopUpdateServiceTests' OrionTV.Desktop.Tests.StubHttpMessageHandler' OrionTV.Desktop.Tests.InlineProgress' OrionTV.Desktop.Tests.LocalStoreTests' OrionTV.Desktop.Tests.TestStringStore' OrionTV.Desktop.Tests.WpfNavigationCollection' OrionTV.Desktop.Tests.PlayerNavigationSurfaceTests' OrionTV.Desktop.Tests.VodSourceHealthProbeTests' OrionTV.Desktop.Tests.StubDecodeProbe' OrionTV.Desktop.Tests.AiCliLauncherTests' OrionTV.Desktop.Tests.DesktopSettingsTests' OrionTV.Desktop.Tests.ExtraVideoSourcesTests' OrionTV.Desktop.Tests.HlsAdSkipTests' OrionTV.Desktop.Tests.HomeCategoryMatcherTests' OrionTV.Desktop.Tests.LocalCachePlaybackCatalogTests' OrionTV.Desktop.Tests.LocalMediaLibraryTests' OrionTV.Desktop.Tests.M3uParserTests' OrionTV.Desktop.Tests.MpvLocalEngineTests' OrionTV.Desktop.Tests.PlaybackResumePolicyTests' OrionTV.Desktop.Tests.PlayerShortcutTests' OrionTV.Desktop.Tests.PlayRecordHistoryTests' OrionTV.Desktop.Tests.RealtimeTranslationProtocolTests' OrionTV.Desktop.Tests.GeminiLiveTranslateProtocolTests' OrionTV.Desktop.Tests.DeepgramSttProtocolTests' OrionTV.Desktop.Tests.DoubaoAstProtocolTests' OrionTV.Desktop.Tests.SubscriptionParserTests' OrionTV.Desktop.Tests.VodCacheLookupTests",
+        "Participating classes": "OrionTV.Desktop.Tests.AiCliLauncherTests; OrionTV.Desktop.Tests.AppleCmsServiceTests; OrionTV.Desktop.Tests.StubHandler; OrionTV.Desktop.Tests.ChannelHealthScoringTests; OrionTV.Desktop.Tests.RecordingHandler; OrionTV.Desktop.Tests.FlvResponseHandler; OrionTV.Desktop.Tests.HtmlResponseHandler; OrionTV.Desktop.Tests.MisleadingHtmlResponseHandler; OrionTV.Desktop.Tests.EncryptedHlsHandler; OrionTV.Desktop.Tests.HtmlSegmentHandler; OrionTV.Desktop.Tests.VariantRecordingHandler; OrionTV.Desktop.Tests.DesktopSettingsTests; OrionTV.Desktop.Tests.LocalStoreTests; OrionTV.Desktop.Tests.TestStringStore; OrionTV.Desktop.Tests.DesktopUpdateServiceTests; OrionTV.Desktop.Tests.StubHttpMessageHandler; OrionTV.Desktop.Tests.InlineProgress; OrionTV.Desktop.Tests.ExtraVideoSourcesTests; OrionTV.Desktop.Tests.HlsAdSkipTests; OrionTV.Desktop.Tests.HomeCategoryMatcherTests; OrionTV.Desktop.Tests.LocalCachePlaybackCatalogTests; OrionTV.Desktop.Tests.LocalMediaLibraryTests; OrionTV.Desktop.Tests.M3uParserTests; OrionTV.Desktop.Tests.MpvLocalEngineTests; OrionTV.Desktop.Tests.PlaybackResumePolicyTests; OrionTV.Desktop.Tests.WpfNavigationCollection; OrionTV.Desktop.Tests.PlayerNavigationSurfaceTests; OrionTV.Desktop.Tests.PlayerShortcutTests; OrionTV.Desktop.Tests.PlayRecordHistoryTests; OrionTV.Desktop.Tests.RealtimeTranslationProtocolTests; OrionTV.Desktop.Tests.GeminiLiveTranslateProtocolTests; OrionTV.Desktop.Tests.DeepgramSttProtocolTests; OrionTV.Desktop.Tests.DoubaoAstProtocolTests; OrionTV.Desktop.Tests.SubscriptionParserTests; OrionTV.Desktop.Tests.VodCacheLookupTests; OrionTV.Desktop.Tests.VodCacheServiceTests; OrionTV.Desktop.Tests.InlineProgress<T>; OrionTV.Desktop.Tests.BlockingFirstProgress; OrionTV.Desktop.Tests.FakeHlsServer; OrionTV.Desktop.Tests.VodProtocolTests; OrionTV.Desktop.Tests.VodSourceHealthProbeTests; OrionTV.Desktop.Tests.StubDecodeProbe"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ExtraVideoSourcesTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HlsAdSkipTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/M3uParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs",
+        "desktop/OrionTV.Desktop.Tests/RealtimeTranslationProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/SubscriptionParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "c601eb789d",
+        "2096e3da6c",
+        "f1bbae77f7",
+        "61f0607246",
+        "e1991e7308",
+        "fe42a7f077",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 1,
+        "emerged_in": "b3ae88d60f",
+        "emerged_date": "2026-07-22",
+        "how": "1) b3ae88d60f (\"feat: publish source-free OrionTV\") created the whole test project in one import, with 12 test files covering unrelated parts of the product: AI CLI launcher (AiCliLauncherTests), AppleCMS catalog (AppleCmsServiceTests + StubHandler), live channel health scoring (ChannelHealthScoringTests + RecordingHandler/FlvResponseHandler), settings and local stores (DesktopSettingsTests, LocalStoreTests, TestStringStore), extra sources, HLS ad skipping, home category matching, M3U parsing, four realtime-translation protocol test classes, subscription parsing, VOD caching (VodCacheServiceTests + FakeHlsServer) and VOD protocol (VodProtocolTests + StubHandler). These test classes do not use each other. They split into many disconnected groups, so the component already showed low cohesion and met the Feature Concentration definition in this first commit.\n2) After that, each feature commit added another unrelated group: fe42a7f077 added LocalMediaLibraryTests; 61f0607246 added MpvLocalEngineTests; f1bbae77f7 added DesktopUpdateServiceTests (+StubHttpMessageHandler, InlineProgress), PlaybackResumePolicyTests, PlayerShortcutTests, VodCacheLookupTests and VodSourceHealthProbeTests (+StubDecodeProbe), plus five new HTTP stub handlers in ChannelHealthScoringTests; c601eb789d added PlayerNavigationSurfaceTests with WpfNavigationCollection; e137971afc added LocalCachePlaybackCatalogTests, PlayRecordHistoryTests and the InlineProgress<T>/BlockingFirstProgress helpers in VodCacheServiceTests. This produced the 27 independent groups reported (LCC 0.6).",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Initial import puts tests for about 12 unrelated features (AI CLI, AppleCMS, channel health, settings/store, M3U, translation protocols, VOD cache/protocol, etc.) into one project"
+          },
+          {
+            "commit": "fe42a7f077",
+            "change": "Adds LocalMediaLibraryTests, a new independent group"
+          },
+          {
+            "commit": "61f0607246",
+            "change": "Adds MpvLocalEngineTests, a new independent group"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "Adds DesktopUpdateServiceTests, PlaybackResumePolicyTests, PlayerShortcutTests, VodCacheLookupTests, VodSourceHealthProbeTests and their helper stubs; adds five more stub handlers to ChannelHealthScoringTests"
+          },
+          {
+            "commit": "c601eb789d",
+            "change": "Adds PlayerNavigationSurfaceTests and WpfNavigationCollection"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "Adds LocalCachePlaybackCatalogTests, PlayRecordHistoryTests and the InlineProgress<T>/BlockingFirstProgress helpers"
+          }
+        ],
+        "why_problematic": "One test assembly checks the AI CLI launcher, update installer, mpv engine, WPF navigation, live-channel probing, four cloud-translation protocols and the VOD cache all together. A change in any one subsystem rebuilds and reruns tests for all the others, and slow or Windows-only tests (PowerShell process launches, fake HLS servers) are mixed with pure parser tests. The many separate private HttpMessageHandler/IProgress stubs (StubHandler twice, StubHttpMessageHandler, RecordingHandler, InlineProgress and InlineProgress<T>) show that there is no shared test infrastructure per feature, so the code is duplicated instead."
+      },
+      "grounding": {
+        "cited": 6,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    },
+    {
+      "designite": {
+        "Smell": "God Component",
+        "Project": "OrionTV.Desktop.Tests",
+        "Namespace": "OrionTV.Desktop.Tests",
+        "Description": "The tool detected the smell in this component because the component contains high number of classes. Number of classes in the component are: 42",
+        "Responsible classes": "OrionTV.Desktop.Tests.WpfNavigationCollection' OrionTV.Desktop.Tests.RecordingHandler' OrionTV.Desktop.Tests.FlvResponseHandler' OrionTV.Desktop.Tests.HtmlResponseHandler' OrionTV.Desktop.Tests.MisleadingHtmlResponseHandler' OrionTV.Desktop.Tests.EncryptedHlsHandler' OrionTV.Desktop.Tests.HtmlSegmentHandler' OrionTV.Desktop.Tests.VariantRecordingHandler' OrionTV.Desktop.Tests.LocalStoreTests' OrionTV.Desktop.Tests.TestStringStore' OrionTV.Desktop.Tests.StubHttpMessageHandler' OrionTV.Desktop.Tests.InlineProgress' OrionTV.Desktop.Tests.InlineProgress<T>",
+        "Participating classes": "OrionTV.Desktop.Tests.AiCliLauncherTests; OrionTV.Desktop.Tests.AppleCmsServiceTests; OrionTV.Desktop.Tests.StubHandler; OrionTV.Desktop.Tests.ChannelHealthScoringTests; OrionTV.Desktop.Tests.RecordingHandler; OrionTV.Desktop.Tests.FlvResponseHandler; OrionTV.Desktop.Tests.HtmlResponseHandler; OrionTV.Desktop.Tests.MisleadingHtmlResponseHandler; OrionTV.Desktop.Tests.EncryptedHlsHandler; OrionTV.Desktop.Tests.HtmlSegmentHandler; OrionTV.Desktop.Tests.VariantRecordingHandler; OrionTV.Desktop.Tests.DesktopSettingsTests; OrionTV.Desktop.Tests.LocalStoreTests; OrionTV.Desktop.Tests.TestStringStore; OrionTV.Desktop.Tests.DesktopUpdateServiceTests; OrionTV.Desktop.Tests.StubHttpMessageHandler; OrionTV.Desktop.Tests.InlineProgress; OrionTV.Desktop.Tests.ExtraVideoSourcesTests; OrionTV.Desktop.Tests.HlsAdSkipTests; OrionTV.Desktop.Tests.HomeCategoryMatcherTests; OrionTV.Desktop.Tests.LocalCachePlaybackCatalogTests; OrionTV.Desktop.Tests.LocalMediaLibraryTests; OrionTV.Desktop.Tests.M3uParserTests; OrionTV.Desktop.Tests.MpvLocalEngineTests; OrionTV.Desktop.Tests.PlaybackResumePolicyTests; OrionTV.Desktop.Tests.WpfNavigationCollection; OrionTV.Desktop.Tests.PlayerNavigationSurfaceTests; OrionTV.Desktop.Tests.PlayerShortcutTests; OrionTV.Desktop.Tests.PlayRecordHistoryTests; OrionTV.Desktop.Tests.RealtimeTranslationProtocolTests; OrionTV.Desktop.Tests.GeminiLiveTranslateProtocolTests; OrionTV.Desktop.Tests.DeepgramSttProtocolTests; OrionTV.Desktop.Tests.DoubaoAstProtocolTests; OrionTV.Desktop.Tests.SubscriptionParserTests; OrionTV.Desktop.Tests.VodCacheLookupTests; OrionTV.Desktop.Tests.VodCacheServiceTests; OrionTV.Desktop.Tests.InlineProgress<T>; OrionTV.Desktop.Tests.BlockingFirstProgress; OrionTV.Desktop.Tests.FakeHlsServer; OrionTV.Desktop.Tests.VodProtocolTests; OrionTV.Desktop.Tests.VodSourceHealthProbeTests; OrionTV.Desktop.Tests.StubDecodeProbe"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ExtraVideoSourcesTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HlsAdSkipTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/M3uParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs",
+        "desktop/OrionTV.Desktop.Tests/RealtimeTranslationProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/SubscriptionParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs"
+      ],
+      "commits": [
+        "e137971afc",
+        "96434d1c40",
+        "c601eb789d",
+        "2096e3da6c",
+        "f1bbae77f7",
+        "61f0607246",
+        "e1991e7308",
+        "fe42a7f077",
+        "b3ae88d60f"
+      ],
+      "answer": {
+        "smell_id": 2,
+        "emerged_in": "f1bbae77f7",
+        "emerged_date": "2026-07-27",
+        "how": "1) b3ae88d60f created the project with about 20 distinctly named classes (test classes plus nested stubs such as StubHandler, RecordingHandler, FlvResponseHandler, TestStringStore, FakeHlsServer), which is below a God Component class-count threshold.\n2) fe42a7f077 (LocalMediaLibraryTests) and 61f0607246 (MpvLocalEngineTests) each added one class, bringing the count to about 22.\n3) f1bbae77f7 (\"prepare desktop 1.3.15 release\") added 13 classes at once: DesktopUpdateServiceTests, StubHttpMessageHandler, InlineProgress, PlaybackResumePolicyTests, PlayerShortcutTests, VodCacheLookupTests, VodSourceHealthProbeTests, StubDecodeProbe, and HtmlResponseHandler, MisleadingHtmlResponseHandler, EncryptedHlsHandler, HtmlSegmentHandler and VariantRecordingHandler inside ChannelHealthScoringTests. This took the count to about 35, past the usual threshold, so this is the commit where the smell appeared.\n4) c601eb789d added WpfNavigationCollection and PlayerNavigationSurfaceTests (about 37 classes).\n5) e137971afc added LocalCachePlaybackCatalogTests, PlayRecordHistoryTests, InlineProgress<T> and BlockingFirstProgress, reaching the 42 classes reported.",
+        "timeline": [
+          {
+            "commit": "b3ae88d60f",
+            "change": "Creates the test project with about 20 classes in 12 files"
+          },
+          {
+            "commit": "fe42a7f077",
+            "change": "Adds LocalMediaLibraryTests"
+          },
+          {
+            "commit": "61f0607246",
+            "change": "Adds MpvLocalEngineTests"
+          },
+          {
+            "commit": "f1bbae77f7",
+            "change": "Adds 13 classes (5 new test classes plus 8 stubs/handlers), crossing the class-count threshold"
+          },
+          {
+            "commit": "c601eb789d",
+            "change": "Adds PlayerNavigationSurfaceTests and WpfNavigationCollection"
+          },
+          {
+            "commit": "e137971afc",
+            "change": "Adds LocalCachePlaybackCatalogTests, PlayRecordHistoryTests, InlineProgress<T> and BlockingFirstProgress (42 classes)"
+          }
+        ],
+        "why_problematic": "The single OrionTV.Desktop.Tests project has become the place where every release commit (1.3.15, 1.3.16, 1.3.17) puts its tests, so it grows with each feature and has no internal structure: all 22 files sit flat in one namespace. Large files such as VodCacheServiceTests (over 880 lines with three nested helpers) and ChannelHealthScoringTests (seven nested handlers) make it hard to find, maintain and selectively run the tests for one subsystem. The test project also depends on both App and Core, so most changes anywhere in the product touch it."
+      },
+      "grounding": {
+        "cited": 6,
+        "unknown_commits": [],
+        "other_commits": [],
+        "grounded": true
+      }
+    }
+  ],
+  "sessions": [
+    {
+      "project": "OrionTV.Desktop.App",
+      "prompt": "prompts/OrionTV.Desktop.App.md",
+      "steps": [
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_log",
+              "input": {
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 681,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "b3ae88d60f",
+                "path": "desktop/OrionTV.Desktop.App",
+                "start_line": 1
+              },
+              "result_chars": 17067,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "list_files",
+              "input": {
+                "commit": "b3ae88d60f",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 3159,
+              "error": false
+            },
+            {
+              "tool": "list_files",
+              "input": {
+                "commit": "e137971afc",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 3422,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "MainWindow|AiCliLauncher|MpvLocalEngine|LocalPlayback",
+                "path": "desktop/OrionTV.Desktop.App/Views"
+              },
+              "result_chars": 1045,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "MainWindow|AiCliLauncher|MpvLocalEngine|Views\\.|PlaybackState",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 8630,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "PlaybackState\\.Idle|new (HomeView|PlayerView|LiveView|SettingsView)|using OrionTV.Desktop.App.Views",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 906,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "^\\s*(public|internal|private)?\\s*(static |sealed |abstract |partial )*(class|interface|enum|struct|record) \\w+",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 8222,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "0c5495360e",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 3001,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "fe42a7f077",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 2518,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "e1991e7308",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 906,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "61f0607246",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 565,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "f1bbae77f7",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 8889,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "f1bbae77f7",
+                "pattern": "^\\s*(public|internal|private)?\\s*(static |sealed |abstract |partial |readonly )*(class|interface|enum|struct) \\w+",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 8422,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "c601eb789d",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 474,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "96434d1c40",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 1924,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "e137971afc",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 3146,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "2096e3da6c",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 346,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "SectionNavigationState|INavigationVisibilityAware|InlineProgress|class LocalCachePlaybackCatalog",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 1487,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "fe42a7f077",
+                "pattern": "class LocalMediaCardItem|PlayerShortcut",
+                "path": "desktop/OrionTV.Desktop.App/Views"
+              },
+              "result_chars": 105,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "class (PlaybackResumePolicy|LocalMediaStore|LocalMediaNaming|EpisodeLabelFormatter|SearchResultSources|CatalogPlayabilityCache|GeminiLiveTranslateProtocol|RollingSubtitleBuffer|FavoriteStore|PlayRecordStore|VodSourceClientFactory|M3uParser|DesktopLiveSourceSettings|CatalogService)\\b|interface IVodSourceClient",
+                "path": "desktop/OrionTV.Desktop.Core"
+              },
+              "result_chars": 1178,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "class (PlaybackResumePolicy|LocalMediaStore|LocalMediaNaming|EpisodeLabelFormatter)\\b",
+                "path": "desktop/OrionTV.Desktop.Core"
+              },
+              "result_chars": 401,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "f1bbae77f7",
+                "pattern": "class (PlaybackResumePolicy|EpisodeLabelFormatter|LocalMediaStore)\\b",
+                "path": "desktop/OrionTV.Desktop.Core"
+              },
+              "result_chars": 303,
+              "error": false
+            },
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "LocalCachePlaybackCatalog|VodSourceHealthDisplay|VodSourceHealthProbe|PlaybackResumePolicy|EpisodeLabelFormatter|LocalMediaNaming|CatalogPlayabilityCache",
+                "path": "desktop/OrionTV.Desktop.App/Views"
+              },
+              "result_chars": 4048,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "CatalogService|CatalogPlayabilityCache",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 309,
+              "error": false
+            },
+            {
+              "tool": "read_file",
+              "input": {
+                "commit": "e137971afc",
+                "path": "desktop/OrionTV.Desktop.App/Navigation.cs",
+                "start_line": 1
+              },
+              "result_chars": 2789,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "Catalog|Playability|Services",
+                "path": "desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs"
+              },
+              "result_chars": 633,
+              "error": false
+            },
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "Catalog|Playability|Services|using",
+                "path": "desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs"
+              },
+              "result_chars": 1064,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "PlayabilityCache|Services\\.Catalog|CardGrid|LiveTranslationController|OpenAiCredentialStore|MpvHost|PlaybackController\\(",
+                "path": "desktop/OrionTV.Desktop.App/Views"
+              },
+              "result_chars": 4191,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "using OrionTV|LocalPlayback|PotPlayerLauncher",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 3671,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "using OrionTV|OrionTV\\.Desktop\\.Core\\.",
+                "path": "desktop/OrionTV.Desktop.App/LocalPlayback"
+              },
+              "result_chars": 10,
+              "error": false
+            },
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "AppServices|LiveChannelViewModel|PlaybackState|OsdController|IAppHost",
+                "path": "desktop/OrionTV.Desktop.App/LiveTranslation"
+              },
+              "result_chars": 10,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "ImageLoader|LiveTranslation|LocalPlayback|Controls",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 17913,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "using OrionTV\\.Desktop\\.App\\.|ImageLoader\\.|LibVlcAudioTap|MpvLocalEngine|PotPlayerLauncher|LiveTranslationLog",
+                "path": "desktop/OrionTV.Desktop.App"
+              },
+              "result_chars": 9482,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "submit_explanations"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "input_tokens": 48,
+        "output_tokens": 18489,
+        "cache_creation_input_tokens": 81796,
+        "cache_read_input_tokens": 1005923
+      }
+    },
+    {
+      "project": "OrionTV.Desktop.Core",
+      "prompt": "prompts/OrionTV.Desktop.Core.md",
+      "steps": [
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_log",
+              "input": {
+                "path": "desktop/OrionTV.Desktop.Core"
+              },
+              "result_chars": 405,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "b3ae88d60f",
+                "path": "desktop/OrionTV.Desktop.Core",
+                "start_line": 1
+              },
+              "result_chars": 20166,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "^\\s*(public|internal)?\\s*(static |sealed |abstract |partial )*(class|interface|enum) ",
+                "path": "desktop/OrionTV.Desktop.Core"
+              },
+              "result_chars": 4908,
+              "error": false
+            },
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "^\\s*(public|internal)?\\s*(static |sealed |abstract |partial )*(class|interface|enum) ",
+                "path": "desktop/OrionTV.Desktop.Core"
+              },
+              "result_chars": 5362,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "fe42a7f077",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 2518,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "f1bbae77f7",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 8889,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "96434d1c40",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 1924,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "e137971afc",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 3146,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "4a7b4a2362",
+                "pattern": "(class|enum) (LocalMedia|PlaybackResumePolicy|MediaProbeStatus|EpisodeLabelFormatter)",
+                "path": "desktop/OrionTV.Desktop.Core"
+              },
+              "result_chars": 226,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "submit_explanations"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "input_tokens": 14,
+        "output_tokens": 3025,
+        "cache_creation_input_tokens": 26637,
+        "cache_read_input_tokens": 73943
+      }
+    },
+    {
+      "project": "OrionTV.Desktop.Tests",
+      "prompt": "prompts/OrionTV.Desktop.Tests.md",
+      "steps": [
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_log",
+              "input": {
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 570,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "b3ae88d60f",
+                "path": "desktop/OrionTV.Desktop.Tests",
+                "start_line": 1
+              },
+              "result_chars": 20298,
+              "error": false
+            },
+            {
+              "tool": "list_files",
+              "input": {
+                "commit": "b3ae88d60f",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 715,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "b3ae88d60f",
+                "pattern": "^\\s*(public |internal |private )?(sealed |static |abstract )*(partial )?(class|record|struct) ",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 2515,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "fe42a7f077",
+                "pattern": "^\\s*(public |internal |private )?(sealed |static |abstract )*(partial )?(class|record|struct) ",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 2616,
+              "error": false
+            },
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "61f0607246",
+                "pattern": "^\\s*(public |internal |private )?(sealed |static |abstract )*(partial )?(class|record|struct) ",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 2711,
+              "error": false
+            },
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "f1bbae77f7",
+                "pattern": "^\\s*(public |internal |private )?(sealed |static |abstract )*(partial )?(class|record|struct) ",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 4363,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "c601eb789d",
+                "pattern": "^\\s*(public |internal |private )?(sealed |static |abstract )*(partial )?(class|record|struct) ",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 4586,
+              "error": false
+            },
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "e137971afc",
+                "pattern": "^\\s*(public |internal |private )?(sealed |static |abstract )*(partial )?(class|record|struct) ",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 5063,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "96434d1c40",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 1924,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "e137971afc",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 3146,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "grep",
+              "input": {
+                "commit": "96434d1c40",
+                "pattern": "class (InlineProgress|BlockingFirstProgress)",
+                "path": "desktop/OrionTV.Desktop.Tests"
+              },
+              "result_chars": 140,
+              "error": false
+            },
+            {
+              "tool": "git_show",
+              "input": {
+                "commit": "f1bbae77f7",
+                "path": "",
+                "start_line": 1
+              },
+              "result_chars": 8889,
+              "error": false
+            }
+          ]
+        },
+        {
+          "text": "",
+          "calls": [
+            {
+              "tool": "submit_explanations"
+            }
+          ]
+        }
+      ],
+      "usage": {
+        "input_tokens": 18,
+        "output_tokens": 5182,
+        "cache_creation_input_tokens": 35293,
+        "cache_read_input_tokens": 140069
+      }
+    }
+  ]
+}

@@ -23,10 +23,10 @@ def read(path):
         return list(csv.DictReader(f))
 
 
-def designite(name):
+def designite(name, base=DESIGNITE):
     """Designite rows (only the smells above) and the analyzed projects, which have a file even without smells."""
     rows, projects = [], []
-    for f in sorted((DESIGNITE / name).glob("Designite_*_ArchSmells.csv")):
+    for f in sorted((base / name).glob("Designite_*_ArchSmells.csv")):
         projects.append(f.name[len("Designite_"):-len("_ArchSmells.csv")])
         for r in read(f):
             if r["Smell"] in SMELLS:

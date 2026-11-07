@@ -1,2 +1,6 @@
 # Shell scripts must keep Unix line endings, also when checked out on Windows (bash fails on \r)
 *.sh text eol=lf
+
+# Data files are read by bash scripts (awk), which do not ignore \r
+data/*.tsv text eol=lf
+data/*.csv text eol=lf

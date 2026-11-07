@@ -36,7 +36,8 @@ designite() {
 [ -f "$DESIGNITE_DIR/DesigniteConsole.dll" ] || { echo "Missing tools/designite/DesigniteConsole.dll - put Designite there."; exit 1; }
 mkdir -p "$REPOS" "$OUT/logs"
 
-ALL=$(tail -n +2 "$SCREENED" | awk -F'\t' '$5 == "sln" { print $1 }')
+# tr: ignore Windows line endings (a checkout with core.autocrlf turns "sln" into "sln\r")
+ALL=$(tail -n +2 "$SCREENED" | tr -d '\r' | awk -F'\t' '$5 == "sln" { print $1 }')
 [ -n "$ALL" ] || { echo "No sln repos in data/screened.tsv."; exit 1; }
 
 # repos given on the command line must be "sln" repos in data/screened.tsv

@@ -22,7 +22,10 @@ output/              analysis results
 ## Requirements
 
 - Git, Git LFS, GitHub CLI (`gh auth login` once), .NET SDK
-- Designite runs only on Windows: run step 2 in Git Bash on Windows
+- Designite runs only on Windows: run step 2 in Git Bash on Windows. Not in
+  WSL: typing `bash` in a Windows command prompt may start WSL, which does not
+  see the Windows `dotnet` (`dotnet: command not found`). Open the Git Bash
+  window, or run `"C:\Program Files\Git\bin\bash.exe" scripts/analyze.sh`
 - Steps 3-4: Python 3 and `pip install -r requirements.txt`
 - Step 3: an Anthropic API key. Copy `.env-example` to `.env` and fill in
   `ANTHROPIC_API_KEY` (`.env` is not committed)
@@ -128,3 +131,94 @@ and raw answer are saved in `response.json` next to it.
   the repo.
 - `output/comparison/instances.csv`: every instance found by Designite or a
   variant, one row each, with a `tool` column (`designite`, `0shot`, `1shot`, ...)
+
+## Explaining how smells emerged (RQ2)
+
+```bash
+python scripts/explain.py --dry-run zo1223/OpaiTV   # only write the first message of each session, no LLM calls
+python scripts/explain.py zo1223/OpaiTV             # one agent session per project
+```
+
+For every smell Designite found, `explain.py` lets an LLM agent find out how
+and when it emerged. It runs one session per C# project, covering all of that
+project's smells. Designite reports Dense Structure for `<All projects
+included>`, so that smell gets its own session. For each session:
+
+1. Each smell's participating classes (from Designite) are matched by class
+   name to the `.cs` files of that project that declare them.
+2. The LLM gets Designite's smells (finding, participating classes and files)
+   and the definitions of those smells from `prompts/arch_smells.md`, but no
+   history. The system prompt is `prompts/explain_smell.md`.
+3. The LLM explores the history itself with read-only tools: `git_log`,
+   `git_show`, `read_file`, `list_files` and `grep`. They only reach the
+   analyzed commit in `data/subjects.csv` and its ancestors. A tool result is
+   cut off after 40,000 characters; files and diffs come in pages of 500
+   lines. A session ends when the LLM calls `submit_explanations`, and fails
+   after 60 steps.
+4. For each smell the LLM answers with the commit the smell last emerged in
+   (the oldest commit of the unbroken run back from the analyzed commit in which
+   the smell is present: if it was removed and came back, the commit it came
+   back in, as `verify.py` checks), how it built up (a timeline of commits) and
+   why it is a problem.
+5. Every commit the LLM cites is checked: `grounded` is false if it cites a
+   commit that is not in the analyzed history. Commits that did not change the
+   smell's files are allowed (a smell can emerge through other files) and are
+   listed in `other_commits`. A smell the LLM did not answer is recorded as an
+   error.
+
+Results go to `output/explanations/<owner>_<repo>/`: `explanations.json` (per
+smell: finding, files, commits that changed them, answer and grounding check;
+per session: every step with its text and tool calls, and token usage),
+`explanations.md` (readable, e.g. for developers to rate) and
+`prompts/<project>.md` (the first message of each session).
+
+### Testbed with known answers
+
+[rkacani/bookstore](https://github.com/rkacani/bookstore) is a small C# repo in
+which each smell emerges in a known commit for a known reason. It includes a
+smell that is removed and comes back, and smells that emerge through files
+Designite does not list. It goes through the pipeline like any other repo (it
+is in `data/screened.tsv`). `testbed/ground_truth.json` records the answers, and
+`testbed/score.py` compares the LLM's explanations with them. See
+[testbed/README.md](testbed/README.md).
+
+### Checking the emergence commits with Designite
+
+```bash
+python scripts/verify.py                  # all repos with explanations (on Windows, like analyze.sh)
+python scripts/verify.py zo1223/OpaiTV    # only the given repos
+```
+
+`verify.py` checks the commit in which the LLM says each smell last emerged:
+the oldest commit of the unbroken run, back from the analyzed commit, in which
+Designite finds the smell (an earlier appearance that was fixed does not count).
+For each smell it runs Designite on the analyzed commit and goes back through the
+commits that change C# code, down to the LLM's commit and then its parent. It
+stops at the first commit without the smell, so older commits are never analyzed.
+Example with commits c1 ... c8 (c8 analyzed):
+
+| LLM says | Designite finds the smell at | verdict     | analyzed           |
+|----------|------------------------------|-------------|--------------------|
+| c5       | c5 ... c8, not at c4         | `confirmed` | c8, c7, c6, c5, c4 |
+| c3       | c7, c8, not at c6            | `too_early` | c8, c7, c6         |
+| c6       | c3 ... c8                    | `too_late`  | c8, c7, c6, c5     |
+
+A smell counts as the same if smell, project and namespace match (for Cyclic
+Dependency and Scattered Functionality also the components Designite lists);
+classes and descriptions are not compared, since they change as the code grows.
+
+Designite runs in a temporary git worktree, so `repos/` stays at the analyzed
+commit. Its results are cached per commit, in
+`output/verification/<owner>_<repo>/designite/<commit>/`, and shared by all
+smells. Commits Designite fails on are skipped, except the LLM's commit and its
+parent. The result is `output/verification/<owner>_<repo>/verification.csv`, one
+row per smell:
+
+| column           | meaning                                                                                                   |
+|------------------|-----------------------------------------------------------------------------------------------------------|
+| `description`    | Designite's description at the analyzed commit (for Cyclic Dependency and Scattered Functionality its components tell apart the smells of one namespace) |
+| `llm_commit`     | commit the LLM says the smell emerged in                                                                  |
+| `present_at`     | smell found at `llm_commit`: `yes`, `no`, or empty if not analyzed (the walk stopped at a later commit)   |
+| `present_before` | smell found at its parent: `yes`, `no`, `no parent`, or empty if not analyzed                             |
+| `verdict`        | `confirmed`, `too_early`, `too_late`, `not_reproduced` (Designite does not find the smell at the analyzed commit in this run), `unverifiable` (Designite failed on `llm_commit` or its parent) or `no_commit` (no answer, or a commit outside the analyzed history) |
+| `actual_commit`  | commit the smell last emerged in, if known: `llm_commit` when `confirmed`, the oldest commit of the unbroken run when `too_early`; empty otherwise |
