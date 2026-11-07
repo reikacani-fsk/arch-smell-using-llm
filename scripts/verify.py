@@ -32,6 +32,8 @@ CODE = ["*.cs", "*.csproj", "*.sln"]   # only commits changing these can change 
 RESTORE = True                         # as in analyze.sh
 COLUMNS = {
     "smell": "", "project": "", "namespace": "",
+    "description": "Designite's description at the analyzed commit (for Cyclic Dependency and Scattered Functionality "
+                   "its components tell apart the smells of one namespace)",
     "llm_commit": "commit the LLM says the smell emerged in",
     "present_at": "smell found at llm_commit: yes, no, or empty if not analyzed (the walk stopped at a later commit)",
     "present_before": "smell found at the parent of llm_commit: yes, no, no parent, or empty if not analyzed",
@@ -103,7 +105,8 @@ def verify(smell, repo_dir, commit, at):
     d, answer = smell["designite"], smell.get("answer") or {}
     k = key(d)
     row = dict.fromkeys(COLUMNS, "")
-    row.update(smell=d["Smell"], project=d["Project"], namespace=d["Namespace"], llm_commit=answer.get("emerged_in", ""))
+    row.update(smell=d["Smell"], project=d["Project"], namespace=d["Namespace"], description=d["Description"],
+               llm_commit=answer.get("emerged_in", ""))
     try:
         sha = revision(repo_dir, commit, row["llm_commit"])
     except ValueError:

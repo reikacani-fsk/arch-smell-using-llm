@@ -200,6 +200,7 @@ row per smell:
 
 | column           | meaning                                                                                                   |
 |------------------|-----------------------------------------------------------------------------------------------------------|
+| `description`    | Designite's description at the analyzed commit (for Cyclic Dependency and Scattered Functionality its components tell apart the smells of one namespace) |
 | `llm_commit`     | commit the LLM says the smell emerged in                                                                  |
 | `present_at`     | smell found at `llm_commit`: `yes`, `no`, or empty if not analyzed (the walk stopped at a later commit)   |
 | `present_before` | smell found at its parent: `yes`, `no`, `no parent`, or empty if not analyzed                             |
