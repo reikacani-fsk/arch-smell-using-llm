@@ -36,11 +36,9 @@ smell it writes one row with the expected commit, the commit the LLM names in
 The last two mean that Designite and the ground truth disagree, which the first
 run should rule out.
 
-`score.py` also writes `output/testbed/comparison.md` for rating the
-explanations by hand. For each smell it shows the expected commit and the LLM's
-commit, then the ground truth's *how* next to the LLM's *how* and timeline, and
-the ground truth's *why* next to the LLM's. Every commit is shown with its step,
-and each smell has empty lines `Rating (how):` and `Rating (why):` to fill in.
+Two more columns hold the explanations to compare by hand: `llm_explanation`
+(the LLM's *how* and *why it is a problem*) and `ground_truth_explanation` (the
+same from `ground_truth.json`).
 
 ## The story
 
