@@ -1,12 +1,14 @@
-"""Checks with Designite the commit in which the LLM says each smell emerged (output/explanations/, RQ2).
-For each smell, Designite runs on the LLM's commit and on its parent: the claim holds if the smell is absent at the
-parent and present at the commit. The script also finds the actual emergence commit: going back from the analyzed
-commit through the commits that change C# code, it is the oldest commit of the unbroken run in which Designite finds
-the smell.
-A smell found at another commit is the same smell if smell, project and namespace match (for Cyclic Dependency, also
-the components in the cycle). The history is the list of non-merge commits that git log shows, newest first.
+"""Checks with Designite the commit in which the LLM says each smell last emerged (output/explanations/, RQ2).
+The smell Designite finds at the analyzed commit last emerged in the oldest commit of the unbroken run, back from the
+analyzed commit, in which Designite finds it. For each smell the script walks back from the analyzed commit through
+the commits that change C# code and lie between it and the LLM's commit, then checks the LLM's commit and its parent.
+It stops at the first commit without the smell (the LLM's commit is too early), or at the parent: there the smell must
+be gone (confirmed), otherwise the LLM's commit is too late. Older commits are never analyzed.
+A smell found at another commit is the same smell if smell, project and namespace match (for Cyclic Dependency and
+Scattered Functionality, also the components Designite lists).
 Designite runs as in analyze.sh (restore first; if Designite then crashes, again without restore) in a temporary git
-worktree, so repos/ stays at the analyzed commit. Results are cached per commit.
+worktree, so repos/ stays at the analyzed commit. Results are cached per commit and shared by all smells. Commits
+Designite fails on are skipped, except the LLM's commit and its parent (then the smell is unverifiable).
 Needs:   Windows (Designite), tools/designite/DesigniteConsole.dll, and explanations from scripts/explain.py
 Usage:   python scripts/verify.py                     all repos with explanations
          python scripts/verify.py owner/repo [...]    only the given repos
@@ -31,14 +33,15 @@ RESTORE = True                         # as in analyze.sh
 COLUMNS = {
     "smell": "", "project": "", "namespace": "",
     "llm_commit": "commit the LLM says the smell emerged in",
-    "present_before": "smell found at the parent of llm_commit: yes, no, no parent, or failed (Designite failed)",
-    "present_at": "smell found at llm_commit: yes, no or failed",
-    "verdict": "confirmed (absent before, present at), already_present (LLM too late), not_present (LLM too early), "
-               "unverifiable (Designite failed) or no_commit (no answer, or a commit outside the analyzed history)",
-    "actual_commit": "oldest commit of the unbroken run up to the analyzed commit in which Designite finds the smell "
-                     "(empty if Designite does not find it at the analyzed commit)",
-    "distance": "commits changing C# code from llm_commit to actual_commit: + LLM too early, - LLM too late "
-                "(0 with verdict confirmed = exact; 0 otherwise = llm_commit changed no C# code)",
+    "present_at": "smell found at llm_commit: yes, no, or empty if not analyzed (the walk stopped at a later commit)",
+    "present_before": "smell found at the parent of llm_commit: yes, no, no parent, or empty if not analyzed",
+    "verdict": "confirmed (found from the analyzed commit down to llm_commit, not at its parent), "
+               "too_early (not found at some commit from llm_commit on), too_late (also found at the parent), "
+               "not_reproduced (Designite does not find it at the analyzed commit in this run), "
+               "unverifiable (Designite failed on llm_commit or its parent) "
+               "or no_commit (no answer, or a commit outside the analyzed history)",
+    "actual_commit": "commit the smell last emerged in, if known: llm_commit when confirmed, the oldest commit of the "
+                     "unbroken run when too_early; empty otherwise (when too_late it is older than the parent)",
 }
 
 
@@ -95,57 +98,43 @@ def smells_at(worktree, sha, cache):
     return {key(r) for r in designite(sha, base=cache)[0]}
 
 
-def actual_commits(repo_dir, commit, keys, at):
-    """{smell key: oldest commit of the unbroken run, back from `commit`, in which Designite finds the smell}."""
-    history = git(repo_dir, "rev-list", "--no-merges", commit, "--", *CODE).split()
-    actual, pending = {}, set(keys)
-    for sha in dict.fromkeys([commit, *history]):
-        if not pending:
-            break
-        found = at(sha)
-        if found is None:   # Designite failed: skip this commit
-            continue
-        for k in list(pending):
-            if k in found:
-                actual[k] = sha
-            else:
-                pending.discard(k)
-    return actual
-
-
-def distance(repo_dir, sha, actual):
-    """Commits changing C# code from `sha` to `actual`: positive if `actual` is later."""
-    count = lambda a, b: int(git(repo_dir, "rev-list", "--count", "--no-merges", f"{a}..{b}", "--", *CODE))
-    return count(sha, actual) - count(actual, sha)
-
-
-def verify(smell, repo_dir, commit, actual, at):
-    """One row of verification.csv."""
+def verify(smell, repo_dir, commit, at):
+    """One row of verification.csv for `smell`, checked at the analyzed `commit`, back to the LLM's commit's parent."""
     d, answer = smell["designite"], smell.get("answer") or {}
     k = key(d)
     row = dict.fromkeys(COLUMNS, "")
-    row.update(smell=d["Smell"], project=d["Project"], namespace=d["Namespace"],
-               llm_commit=answer.get("emerged_in", ""), actual_commit=actual.get(k, "")[:10])
+    row.update(smell=d["Smell"], project=d["Project"], namespace=d["Namespace"], llm_commit=answer.get("emerged_in", ""))
     try:
         sha = revision(repo_dir, commit, row["llm_commit"])
     except ValueError:
         return {**row, "verdict": "no_commit"}
 
-    parents = git(repo_dir, "rev-list", "--parents", "-n", "1", sha).split()[1:]
-    now, before = at(sha), (at(parents[0]) if parents else set())
-    shown = lambda found: "failed" if found is None else ("yes" if k in found else "no")
-    row.update(present_at=shown(now), present_before=shown(before) if parents else "no parent")
-    if now is None or before is None:
-        row["verdict"] = "unverifiable"
-    elif k not in now:
-        row["verdict"] = "not_present"
-    elif k in before:
-        row["verdict"] = "already_present"
-    else:
-        row["verdict"] = "confirmed"
-    if k in actual:
-        row["distance"] = distance(repo_dir, sha, actual[k])
-    return row
+    # 1) from the analyzed commit down to the LLM's commit (newest first): the smell must be found at every commit.
+    #    --ancestry-path: only commits that contain the LLM's commit
+    later = git(repo_dir, "rev-list", "--ancestry-path", f"{sha}..{commit}", "--", *CODE).split()
+    last_found = ""
+    for c in dict.fromkeys([commit, *later, sha]):
+        found = at(c)
+        if found is None:
+            if c == sha:
+                return {**row, "verdict": "unverifiable"}
+            continue   # Designite failed on a commit in between: skip it
+        if k not in found:
+            return {**row, "present_at": "no" if c == sha else "", "actual_commit": last_found[:10],
+                    "verdict": "too_early" if last_found else "not_reproduced"}
+        last_found = c
+    row["present_at"] = "yes"
+
+    # 2) the parent of the LLM's commit (the first parent for a merge): the smell must not be found there
+    parent = git(repo_dir, "rev-list", "--parents", "-n", "1", sha).split()[1:2]
+    if not parent:
+        return {**row, "present_before": "no parent", "verdict": "confirmed", "actual_commit": sha[:10]}
+    found = at(parent[0])
+    if found is None:
+        return {**row, "verdict": "unverifiable"}
+    if k in found:
+        return {**row, "present_before": "yes", "verdict": "too_late"}
+    return {**row, "present_before": "no", "verdict": "confirmed", "actual_commit": sha[:10]}
 
 
 def main(selected):
@@ -171,8 +160,7 @@ def main(selected):
         git(repo_dir, "worktree", "add", "-q", "--detach", str(worktree), commit)
         try:
             at = lambda sha: smells_at(worktree, sha, cache)
-            actual = actual_commits(repo_dir, commit, {key(s["designite"]) for s in data["smells"]}, at)
-            rows = [verify(s, repo_dir, commit, actual, at) for s in data["smells"]]
+            rows = [verify(s, repo_dir, commit, at) for s in data["smells"]]
         finally:
             git(repo_dir, "worktree", "remove", "--force", str(worktree))
 
@@ -180,9 +168,8 @@ def main(selected):
             w = csv.DictWriter(f, fieldnames=list(COLUMNS))
             w.writeheader()
             w.writerows(rows)
-        confirmed = [r for r in rows if r["verdict"] == "confirmed"]
-        print(f"    {len(confirmed)}/{len(rows)} confirmed, {sum(r['distance'] == 0 for r in confirmed)} exact "
-              f"-> {out.relative_to(ROOT).as_posix()}/verification.csv")
+        confirmed = sum(r["verdict"] == "confirmed" for r in rows)
+        print(f"    {confirmed}/{len(rows)} confirmed -> {out.relative_to(ROOT).as_posix()}/verification.csv")
 
 
 if __name__ == "__main__":

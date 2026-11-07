@@ -173,29 +173,35 @@ python scripts/verify.py                  # all repos with explanations (on Wind
 python scripts/verify.py zo1223/OpaiTV    # only the given repos
 ```
 
-`verify.py` checks the commit in which the LLM says each smell emerged. It runs
-Designite on that commit and on its parent: the claim holds if the smell is
-absent at the parent and present at the commit. It also finds the actual
-emergence commit: going back from the analyzed commit through the commits that
-change C# code, it is the oldest commit of the unbroken run in which Designite
-finds the smell. A smell counts as the same if smell, project and namespace
-match (for Cyclic Dependency and Scattered Functionality also the components
-Designite lists).
+`verify.py` checks the commit in which the LLM says each smell last emerged:
+the oldest commit of the unbroken run, back from the analyzed commit, in which
+Designite finds the smell (an earlier appearance that was fixed does not count).
+For each smell it runs Designite on the analyzed commit and goes back through the
+commits that change C# code, down to the LLM's commit and then its parent. It
+stops at the first commit without the smell, so older commits are never analyzed.
+Example with commits c1 ... c8 (c8 analyzed):
+
+| LLM says | Designite finds the smell at | verdict     | analyzed           |
+|----------|------------------------------|-------------|--------------------|
+| c5       | c5 ... c8, not at c4         | `confirmed` | c8, c7, c6, c5, c4 |
+| c3       | c7, c8, not at c6            | `too_early` | c8, c7, c6         |
+| c6       | c3 ... c8                    | `too_late`  | c8, c7, c6, c5     |
+
+A smell counts as the same if smell, project and namespace match (for Cyclic
+Dependency and Scattered Functionality also the components Designite lists);
+classes and descriptions are not compared, since they change as the code grows.
 
 Designite runs in a temporary git worktree, so `repos/` stays at the analyzed
-commit. Its results are cached per commit in
-`output/verification/<owner>_<repo>/designite/<commit>/`. The result is
-`output/verification/<owner>_<repo>/verification.csv`, one row per smell:
+commit. Its results are cached per commit, in
+`output/verification/<owner>_<repo>/designite/<commit>/`, and shared by all
+smells. Commits Designite fails on are skipped, except the LLM's commit and its
+parent. The result is `output/verification/<owner>_<repo>/verification.csv`, one
+row per smell:
 
-| column           | meaning                                                                                                     |
-|------------------|-------------------------------------------------------------------------------------------------------------|
-| `llm_commit`     | commit the LLM says the smell emerged in                                                                    |
-| `present_before` | smell found at its parent: `yes`, `no`, `no parent` or `failed` (Designite failed)                          |
-| `present_at`     | smell found at `llm_commit`: `yes`, `no` or `failed`                                                        |
-| `verdict`        | `confirmed`, `already_present` (LLM too late), `not_present` (LLM too early), `unverifiable` or `no_commit` |
-| `actual_commit`  | actual emergence commit (empty if Designite does not find the smell at the analyzed commit)                 |
-| `distance`       | commits changing C# code from `llm_commit` to `actual_commit`: `+` LLM too early, `-` LLM too late           |
-
-`confirmed` with distance 0 means the LLM found the exact commit. `confirmed`
-with another distance means the smell appeared there, disappeared and came back
-later.
+| column           | meaning                                                                                                   |
+|------------------|-----------------------------------------------------------------------------------------------------------|
+| `llm_commit`     | commit the LLM says the smell emerged in                                                                  |
+| `present_at`     | smell found at `llm_commit`: `yes`, `no`, or empty if not analyzed (the walk stopped at a later commit)   |
+| `present_before` | smell found at its parent: `yes`, `no`, `no parent`, or empty if not analyzed                             |
+| `verdict`        | `confirmed`, `too_early`, `too_late`, `not_reproduced` (Designite does not find the smell at the analyzed commit in this run), `unverifiable` (Designite failed on `llm_commit` or its parent) or `no_commit` (no answer, or a commit outside the analyzed history) |
+| `actual_commit`  | commit the smell last emerged in, if known: `llm_commit` when `confirmed`, the oldest commit of the unbroken run when `too_early`; empty otherwise |
