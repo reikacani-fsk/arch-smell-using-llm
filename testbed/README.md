@@ -14,7 +14,7 @@ and commit there. Nothing in the repo hints at the smells.
 ## Usage
 
 ```bash
-bash scripts/analyze.sh rkacani/bookstore       # Windows: clone into repos/ and run Designite (it is in data/screened.tsv)
+bash scripts/analyze.sh rkacani/bookstore       # Git Bash on Windows: clone into repos/ and run Designite (it is in data/screened.tsv)
 python scripts/explain.py rkacani/bookstore     # the LLM explains each smell Designite found
 python scripts/verify.py rkacani/bookstore      # Windows, optional: Designite's verdict on the LLM's commits
 python testbed/score.py                         # compare with ground_truth.json -> output/testbed/score.csv

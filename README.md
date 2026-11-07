@@ -22,7 +22,10 @@ output/              analysis results
 ## Requirements
 
 - Git, Git LFS, GitHub CLI (`gh auth login` once), .NET SDK
-- Designite runs only on Windows: run step 2 in Git Bash on Windows
+- Designite runs only on Windows: run step 2 in Git Bash on Windows. Not in
+  WSL: typing `bash` in a Windows command prompt may start WSL, which does not
+  see the Windows `dotnet` (`dotnet: command not found`). Open the Git Bash
+  window, or run `"C:\Program Files\Git\bin\bash.exe" scripts/analyze.sh`
 - Steps 3-4: Python 3 and `pip install -r requirements.txt`
 - Step 3: an Anthropic API key. Copy `.env-example` to `.env` and fill in
   `ANTHROPIC_API_KEY` (`.env` is not committed)
