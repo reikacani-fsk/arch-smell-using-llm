@@ -105,10 +105,10 @@ def score_explanations():
 
 
 def refactoring(answer):
-    """The LLM's refactoring in one cell: its summary and steps."""
+    """The LLM's refactoring of one smell in one cell: its steps and rationale."""
     if not answer:
         return ""
-    return answer["summary"] + "\nSteps:\n" + "\n".join(f"- {step}" for step in answer["steps"])
+    return "Steps:\n" + "\n".join(f"- {step}" for step in answer["steps"]) + f"\nRationale: {answer['rationale']}"
 
 
 def score_refactorings():

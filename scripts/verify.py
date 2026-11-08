@@ -83,6 +83,19 @@ def run_designite(worktree, sha, out):
     return False
 
 
+def remove_worktree(repo_dir, worktree):
+    """Removes a temporary worktree. On Windows, dotnet's build servers keep files in it open, so they are stopped
+    first. If it still cannot be removed, it is only reported: the next run deletes it before adding it again."""
+    subprocess.run(["dotnet", "build-server", "shutdown"], capture_output=True, stdin=subprocess.DEVNULL)
+    try:
+        git(repo_dir, "worktree", "remove", "--force", str(worktree))
+    except subprocess.CalledProcessError as e:
+        shutil.rmtree(worktree, ignore_errors=True)
+        git(repo_dir, "worktree", "prune")
+        if worktree.exists():
+            print(f"    could not remove {worktree}: {e.stderr.strip()}")
+
+
 def smells_at(worktree, sha, cache):
     """The keys of the smells Designite finds at commit `sha`, or None if Designite failed. Cached in `cache`/<sha>/."""
     out = cache / sha
@@ -165,7 +178,7 @@ def main(selected):
             at = lambda sha: smells_at(worktree, sha, cache)
             rows = [verify(s, repo_dir, commit, at) for s in data["smells"]]
         finally:
-            git(repo_dir, "worktree", "remove", "--force", str(worktree))
+            remove_worktree(repo_dir, worktree)
 
         with open(out / "verification.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=list(COLUMNS))

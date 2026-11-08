@@ -20,9 +20,15 @@ import csv
 import json
 import re
 import subprocess
+import time
 from collections import Counter
 
 import anthropic
+
+try:   # the HTTP library of the anthropic SDK: httpx2 in newer versions, httpx before
+    import httpx2 as httpx
+except ImportError:
+    import httpx
 
 from compare import designite
 from llm_analyze import EFFORT, MODEL, ROOT, projects
@@ -34,6 +40,7 @@ ALL_PROJECTS = "<All projects included>"   # Designite's project for Dense Struc
 MAX_STEPS = 60              # model turns per session; a session that has not submitted by then fails
 MAX_RESULT_CHARS = 40_000   # characters per tool result; longer results are cut off with a hint to narrow them
 PAGE_LINES = 500            # lines per call of read_file and of git_show with a path; more via start_line
+RETRIES = 5                 # retries of a model turn after a dropped connection or an overloaded API (15 s, 30 s, ...)
 USAGE = ["input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"]
 EXPLANATION = {
     "type": "object",
@@ -186,23 +193,47 @@ def first_message(project, smells, commit):
     return "\n".join(parts)
 
 
-def explore(client, text, system, tools, run, submit, nudge, max_steps=MAX_STEPS):
+def transient(e):
+    """Whether an API error is worth retrying: a dropped connection, rate limiting, or an overloaded or failing API."""
+    if isinstance(e, anthropic.APIStatusError):
+        return e.status_code == 429 or e.status_code >= 500
+    return isinstance(e, (anthropic.APIConnectionError, httpx.TransportError))
+
+
+def next_message(client, system, tools, messages):
+    """The model's next turn. The SDK does not retry a response that breaks off while streaming, so this retries
+    transient errors itself, `RETRIES` times with growing waits; RuntimeError if they all fail."""
+    for attempt in range(RETRIES + 1):
+        try:
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=64000,
+                system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+                tools=tools,
+                messages=messages,
+                thinking={"type": "adaptive"},
+                output_config={"effort": EFFORT},
+                cache_control={"type": "ephemeral"},   # caches the growing conversation between steps
+            ) as stream:
+                return stream.get_final_message()
+        except Exception as e:
+            if not transient(e):
+                raise
+            if attempt == RETRIES:
+                raise RuntimeError(f"API failed {RETRIES + 1} times, last: {type(e).__name__}: {e}") from e
+            wait = 15 * 2 ** attempt
+            print(f"    API error ({type(e).__name__}: {e}), retrying in {wait} s")
+            time.sleep(wait)
+
+
+def explore(client, text, system, tools, run, submit, nudge, max_steps=MAX_STEPS, on_step=None):
     """Runs one agent session: `run(name, input)` executes a tool call and returns its result. It ends when the model
-    calls the tool `submit`; `nudge` asks for that if the model stops without it.
+    calls the tool `submit`; `nudge` asks for that if the model stops without it. `on_step(number, step)` is called
+    after each step, e.g. to show progress.
     Returns (the input of the `submit` call, the steps taken, the summed token usage)."""
     messages, steps, usage = [{"role": "user", "content": text}], [], Counter()
     for _ in range(max_steps):
-        with client.messages.stream(
-            model=MODEL,
-            max_tokens=64000,
-            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-            tools=tools,
-            messages=messages,
-            thinking={"type": "adaptive"},
-            output_config={"effort": EFFORT},
-            cache_control={"type": "ephemeral"},   # caches the growing conversation between steps
-        ) as stream:
-            message = stream.get_final_message()
+        message = next_message(client, system, tools, messages)
         usage.update({k: getattr(message.usage, k) or 0 for k in USAGE})
         messages.append({"role": "assistant", "content": message.content})
         step = {"text": "\n".join(b.text for b in message.content if b.type == "text"), "calls": []}
@@ -230,6 +261,8 @@ def explore(client, text, system, tools, run, submit, nudge, max_steps=MAX_STEPS
             step["calls"].append({"tool": call.name, "input": call.input, "result_chars": len(result), "error": error})
             results.append({"type": "tool_result", "tool_use_id": call.id, "content": result, "is_error": error})
         messages.append({"role": "user", "content": results})
+        if on_step:
+            on_step(len(steps), step)
     raise RuntimeError(f"nothing submitted after {max_steps} steps")
 
 

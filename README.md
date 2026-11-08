@@ -229,50 +229,58 @@ row per smell:
 ## Refactoring the smells (RQ3)
 
 ```bash
-python scripts/refactor.py --dry-run zo1223/OpaiTV          # only write the first message of each session, no LLM calls
-python scripts/refactor.py zo1223/OpaiTV                    # Windows, like verify.py: one agent session per smell
-python scripts/refactor.py --with-explanation zo1223/OpaiTV # the same, with how the smell emerged (RQ2)
+python scripts/refactor.py --dry-run zo1223/OpaiTV          # only write the first message of the session, no LLM calls
+python scripts/refactor.py zo1223/OpaiTV                    # Windows, like verify.py: one agent session for all smells
+python scripts/refactor.py --with-explanation zo1223/OpaiTV # the same, with how each smell emerged (RQ2)
 ```
 
-For every smell Designite found, `refactor.py` lets an LLM agent refactor the
-code to remove it, then checks the result. For each smell:
+`refactor.py` lets an LLM agent refactor the code to remove all smells
+Designite found in a repo, in one session, and then checks the result once:
 
 1. The agent works in a temporary git worktree at the analyzed commit. It gets
-   the smell (Designite's finding, participating classes and their files), its
-   definition and what a component and a dependency are (from
+   every smell (Designite's finding, participating classes and their files),
+   the smells' definitions and what a component and a dependency are (from
    `prompts/arch_smells.md`). With `--with-explanation` it also gets the RQ2
-   explanation of how the smell emerged (`output/explanations/`), so the two
+   explanation of how each smell emerged (`output/explanations/`), so the two
    variants show whether that context helps. The system prompt is
-   `prompts/refactor_smell.md`: goals, method, a catalog of refactorings and rules
-   (keep behaviour and tests, remove dependencies instead of hiding them).
+   `prompts/refactor_smell.md`: goals, method (find the causes, plan across the
+   smells since they often share a cause, apply and build step by step, check),
+   a catalog of refactorings and rules (keep behaviour and tests, remove
+   dependencies instead of hiding them).
 2. The agent reads and edits the code with `list_files`, `read_file`, `grep`,
    `edit_file`, `write_file` and `delete_file`, and can call `build` and, if the
    solution has a test project, `run_tests`. It cannot run Designite. It ends
-   with `submit_refactoring`: the refactorings applied (from the catalog), a
-   summary, the steps and a rationale. A session fails after 100 steps.
+   with `submit_refactoring`: a summary, and for every smell the refactorings
+   applied (from the catalog), the steps and a rationale. Each step is printed
+   while it runs. A session fails after 200 steps. A model turn that fails
+   because the connection drops or the API is overloaded is retried 5 times
+   (after 15 s, 30 s, ... 240 s).
 3. Its changes are committed in the worktree, saved as a patch, and checked:
 
 | # | column          | check                                                                                     |
 |---|-----------------|-------------------------------------------------------------------------------------------|
-| 1 | `builds`        | `dotnet build` of the solution succeeds                                                    |
+| 1 | `builds`        | `dotnet build` of the solution succeeds (one value for the whole refactoring)              |
 | 2 | `tests_pass`    | `dotnet test` succeeds; `no_tests` if the solution has no test project, `failing_before` if the tests already fail at the analyzed commit |
-| 3 | `smell_removed` | Designite no longer finds the smell (the same smell as in `verify.py`)                     |
-| 4 | `new_smells`    | smells Designite finds after the refactoring but not at the analyzed commit                |
+| 3 | `smell_removed` | per smell: Designite no longer finds it (the same smell as in `verify.py`)                 |
+| 4 | new smells      | each smell Designite finds after the refactoring but not at the analyzed commit gets its own row, with verdict `new_smell` |
 
 Repos that do not build or that Designite fails on at the analyzed commit are
-skipped. The `verdict` is the first failed check: `broken_build`, `tests_fail`,
-`unverifiable` (Designite failed on the refactored code), `not_fixed`,
-`introduced_smells`, otherwise `fixed`. It is `not_reproduced` if Designite does not
-find the smell at the analyzed commit in this run (not refactored), and
-`no_answer` if the LLM submitted nothing.
+skipped. Smells Designite does not find at the analyzed commit in this run are
+not given to the LLM (`not_reproduced`). For the other smells the `verdict` is
+the first failed check: `broken_build`, `tests_fail`, `unverifiable` (Designite
+failed on the refactored code), `not_fixed`, otherwise `fixed`; `no_answer` if
+the session failed or the LLM did not answer the smell. Since all smells are
+refactored together, a broken build or failing tests count for every smell,
+and a new smell cannot be traced to the refactoring of one smell.
 
 Results go to `output/refactoring/<variant>/<owner>_<repo>/` (variant `code`, or
-`explanation`): `refactoring.csv` (one row per smell: `id`, smell, project,
-namespace, description, `refactoring_type`, the four checks and `verdict`),
-`refactorings.json` (per smell: finding, answer, checks, every step of the
-session and token usage), `refactorings.md` (readable), `patches/<id>.patch`
-(the code changes), `prompts/<id>.md` (the first message) and `designite/`
-(Designite's results per commit, cached).
+`explanation`): `refactoring.csv` (one row per smell and per new smell: `id`,
+smell, project, namespace, description, `refactoring_type`, the checks and
+`verdict`), `refactorings.json` (the summary; per smell its finding, answer and
+checks; the new smells; every step of the session and token usage),
+`refactorings.md` (readable), `refactoring.patch` (the code changes),
+`prompt.md` (the first message) and `designite/` (Designite's results per
+commit, cached).
 
 For the testbed, `testbed/ground_truth.json` records for each smell the
 refactorings that remove it and the intended fix. `testbed/score.py` compares
