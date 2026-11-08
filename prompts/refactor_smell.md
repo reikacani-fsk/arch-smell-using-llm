@@ -10,6 +10,20 @@ A good refactoring, in this order of priority:
 4. **Introduces no new smells:** no new cycle, no dependency on a less stable component, no oversized or incohesive component, no single generic entry point, no concern spread over several components, no denser dependency graph.
 5. **Is focused.** It changes only what is needed to remove these smells.
 
+# How Designite detects the smells
+
+Extracted from the description of Designite by its authors (Sharma, Singh and Spinellis, "An empirical investigation on the relationship between design and architecture smells", Empirical Software Engineering, 2020, Section 4.2):
+
+| Smell | Unit | Detection rule | Threshold |
+|---|---|---|---|
+| Cyclic Dependency | namespace | A depends on B if at least one class in A refers to a class in B (association, aggregation, composition). Cycles are found with depth-first search. | search stops after 5 hops |
+| Unstable Dependency | namespace | Instability I = Ce / (Ce + Ca). Reported when a component depends on a component that is less stable than itself. | — |
+| Ambiguous Interface | namespace | The component has only one public or internal method. | at least 5 classes in the component |
+| God Component | namespace | Too large. | > 30 classes or > 27,000 lines of code |
+| Feature Concentration | namespace | LCC = number of unconnected groups of classes ÷ number of classes. Two classes are connected by association, aggregation, composition or inheritance. | LCC > 0.2 |
+| Scattered Functionality | method | A method accesses at least two other components. | reported only if this happens more than once |
+| Dense Structure | whole repo | Average degree = 2·\|E\| / \|V\| of the namespace dependency graph. | > 5, at most one instance per repo |
+
 # How to work
 
 1. **Find the causes.** For each smell, read its files and find the exact types, members and `using` directives that create it: e.g. the references that close a cycle, the groups of classes that do not use each other, the methods that realise a scattered concern. Use `grep` to find every place that uses them.
