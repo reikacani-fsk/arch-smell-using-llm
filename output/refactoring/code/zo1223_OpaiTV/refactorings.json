@@ -1,0 +1,2531 @@
+{
+  "repo": "zo1223/OpaiTV",
+  "commit": "e137971afcca15d93b1c87f5eccd705bed82894c",
+  "variant": "code",
+  "model": "claude-opus-5-5",
+  "effort": "medium",
+  "tests_at_analyzed_commit": "fail",
+  "smells": [
+    {
+      "id": 1,
+      "designite": {
+        "Smell": "Cyclic Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because this component participates in a cyclic dependency. The participating components in the cycle are: OrionTV.Desktop.App' OrionTV.Desktop.App.Views",
+        "Responsible classes": "OrionTV.Desktop.App.AiCliLauncher' OrionTV.Desktop.App.MainWindow' OrionTV.Desktop.App.Views.AiImportDialog' OrionTV.Desktop.App.Views.LiveView' OrionTV.Desktop.App.Views.PlayerView",
+        "Participating classes": "OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.Views.AiImportDialog; OrionTV.Desktop.App.Views.LiveView; OrionTV.Desktop.App.Views.PlayerView"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 1,
+        "refactorings": [
+          "Extract Component",
+          "Move Class"
+        ],
+        "steps": [
+          "Moved AiCliLauncher/AiCliTool/AiCliLaunchResult and AiSourceWatcher to the new namespace OrionTV.Desktop.App.AiImport",
+          "Moved AppServices and Navigation.cs (IAppHost, AppPage, PlaybackResumeContext, DetailParameter, PlayParameter) to OrionTV.Desktop.App.Hosting",
+          "Moved INavigationAware and INavigationVisibilityAware to OrionTV.Desktop.App.Views (new file Views/NavigationContracts.cs), since the pages implement them",
+          "Moved OsdController, PlayerKeyboardHook and LiveChannelViewModel to Views/ (used only by LiveView and PlayerView)",
+          "Moved ImageLoader to Controls/",
+          "Moved PlaybackController/PlaybackState, the cache, source-health and update classes to the namespaces Playback, Caching, CacheCatalog, SourceHealth and Updates",
+          "Updated usings in MainWindow, all views, controls and tests"
+        ],
+        "rationale": "The cycle existed because the root namespace held the shell (MainWindow, which creates the views) and also the services the views use (AppServices, IAppHost, AiCliLauncher, OsdController, \u2026). The root now holds only App, MainWindow and the XAML converter, and no type in any other namespace references them. Edges now run root \u2192 Views \u2192 Hosting/AiImport/\u2026, with no edge back, so the cycle is removed. Only namespaces changed, so behaviour is the same."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 2,
+      "designite": {
+        "Smell": "Cyclic Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because this component participates in a cyclic dependency. The participating components in the cycle are: OrionTV.Desktop.App' OrionTV.Desktop.App.Views' OrionTV.Desktop.App.LocalPlayback",
+        "Responsible classes": "OrionTV.Desktop.App.AiCliLauncher' OrionTV.Desktop.App.MainWindow' OrionTV.Desktop.App.Views.AiImportDialog' OrionTV.Desktop.App.Views.LiveView' OrionTV.Desktop.App.Views.PlayerView' OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine",
+        "Participating classes": "OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.Views.AiImportDialog; OrionTV.Desktop.App.Views.LiveView; OrionTV.Desktop.App.Views.PlayerView; OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 2,
+        "refactorings": [
+          "Extract Component",
+          "Move Class"
+        ],
+        "steps": [
+          "Moved PlaybackController and PlaybackState from the root namespace to OrionTV.Desktop.App.Playback",
+          "MpvLocalEngine now uses OrionTV.Desktop.App.Playback for PlaybackState instead of the root namespace",
+          "Same root-namespace extraction as for smell 1 (Views no longer reference the root)"
+        ],
+        "rationale": "The longer cycle closed through LocalPlayback \u2192 root (MpvLocalEngine uses PlaybackState) and root \u2192 Views \u2192 LocalPlayback. PlaybackState now lives in Playback, which depends on nothing else in the App project, and the root is no longer referenced by Views. So LocalPlayback \u2192 Playback and Views \u2192 LocalPlayback form no cycle. The enum and its values are unchanged."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 3,
+      "designite": {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [AiCliTool' AiCliLauncher' AiCliTaskMode' MainWindow' SectionNavigationState' AppPage' IAppHost' INavigationAware' INavigationVisibilityAware' AiSourceWatcher' ChangeKind' AppServices' DesktopUpdateService' PlaybackController' VodCacheService' InlineProgress<T>' VodCacheLog' VodDownloadManager' Job' VodPlayableSourceResolver' VodSourceProbeStatus' VodSourceHealthDisplay' VodSourceHealthProbe' LibVlcMediaDecodeProbe' WindowMessage' HlsAesDecryptMerger' VodCacheSession' CacheFile' PlaybackState' VodDownloadJobStatus' MediaDecodeProbeStatus' IMediaDecodeProbe' VodSourceProbeSampler]' [App]' [EmptyStringToVisibilityConverter]' [ImageLoader]' [LiveChannelViewModel]' [LocalCachePlaybackCatalog]' [OsdController]' [PlayerKeyboardHook' KbdLlHookStruct]' [VodCacheLookup]. LCC (Lack of Component Cohesion) = 0'21",
+        "Responsible classes": "OrionTV.Desktop.App.OsdController' OrionTV.Desktop.App.VodCacheLookup",
+        "Participating classes": "OrionTV.Desktop.App.AiCliTool; OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.AiCliTaskMode; OrionTV.Desktop.App.AiSourceWatcher; OrionTV.Desktop.App.ChangeKind; OrionTV.Desktop.App.App; OrionTV.Desktop.App.AppServices; OrionTV.Desktop.App.DesktopUpdateService; OrionTV.Desktop.App.EmptyStringToVisibilityConverter; OrionTV.Desktop.App.HlsAesDecryptMerger; OrionTV.Desktop.App.ImageLoader; OrionTV.Desktop.App.LiveChannelViewModel; OrionTV.Desktop.App.LocalCachePlaybackCatalog; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.SectionNavigationState; OrionTV.Desktop.App.AppPage; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.INavigationAware; OrionTV.Desktop.App.INavigationVisibilityAware; OrionTV.Desktop.App.OsdController; OrionTV.Desktop.App.PlaybackState; OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.PlayerKeyboardHook; OrionTV.Desktop.App.KbdLlHookStruct; OrionTV.Desktop.App.VodCacheLookup; OrionTV.Desktop.App.VodCacheSession; OrionTV.Desktop.App.CacheFile; OrionTV.Desktop.App.VodCacheService; OrionTV.Desktop.App.InlineProgress<T>; OrionTV.Desktop.App.VodCacheLog; OrionTV.Desktop.App.VodDownloadJobStatus; OrionTV.Desktop.App.VodDownloadManager; OrionTV.Desktop.App.Job; OrionTV.Desktop.App.VodPlayableSourceResolver; OrionTV.Desktop.App.VodSourceProbeStatus; OrionTV.Desktop.App.MediaDecodeProbeStatus; OrionTV.Desktop.App.IMediaDecodeProbe; OrionTV.Desktop.App.VodSourceProbeSampler; OrionTV.Desktop.App.VodSourceHealthDisplay; OrionTV.Desktop.App.VodSourceHealthProbe; OrionTV.Desktop.App.LibVlcMediaDecodeProbe; OrionTV.Desktop.App.WindowMessage"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/AiSourceWatcher.cs",
+        "desktop/OrionTV.Desktop.App/App.xaml.cs",
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/DesktopUpdateService.cs",
+        "desktop/OrionTV.Desktop.App/EmptyStringToVisibilityConverter.cs",
+        "desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs",
+        "desktop/OrionTV.Desktop.App/ImageLoader.cs",
+        "desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs",
+        "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/OsdController.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs",
+        "desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheLookup.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+        "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+        "desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs",
+        "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 3,
+        "refactorings": [
+          "Split Component",
+          "Move Class"
+        ],
+        "steps": [
+          "Split the 42-class root into Hosting, Playback, Caching, CacheCatalog, SourceHealth, Updates and AiImport",
+          "Moved ImageLoader to Controls; moved LiveChannelViewModel, OsdController and PlayerKeyboardHook to Views",
+          "The root keeps only App, MainWindow (+ nested SectionNavigationState) and EmptyStringToVisibilityConverter (used by App.xaml resources)"
+        ],
+        "rationale": "The root mixed unrelated concerns (shell, HLS caching, update download, AI CLI, source probing, LibVLC control, UI helpers). Each concern now has its own namespace whose classes are connected: Caching is linked through VodCacheService/VodCacheSession, and SourceHealth through VodSourceProbeStatus and IMediaDecodeProbe. Helpers that only pages use now sit with the pages. The root has 4 classes, so the isolated groups (ImageLoader, VodCacheLookup, LocalCachePlaybackCatalog, OsdController, \u2026) are no longer in it."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 4,
+      "designite": {
+        "Smell": "God Component",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because the component contains high number of classes. Number of classes in the component are: 42",
+        "Responsible classes": "OrionTV.Desktop.App.AiCliTool' OrionTV.Desktop.App.AiCliTaskMode' OrionTV.Desktop.App.ChangeKind' OrionTV.Desktop.App.AppPage' OrionTV.Desktop.App.PlaybackState' OrionTV.Desktop.App.KbdLlHookStruct' OrionTV.Desktop.App.CacheFile' OrionTV.Desktop.App.VodDownloadJobStatus' OrionTV.Desktop.App.VodSourceProbeStatus' OrionTV.Desktop.App.MediaDecodeProbeStatus' OrionTV.Desktop.App.WindowMessage' OrionTV.Desktop.App.SectionNavigationState' OrionTV.Desktop.App.INavigationAware",
+        "Participating classes": "OrionTV.Desktop.App.AiCliTool; OrionTV.Desktop.App.AiCliLauncher; OrionTV.Desktop.App.AiCliTaskMode; OrionTV.Desktop.App.AiSourceWatcher; OrionTV.Desktop.App.ChangeKind; OrionTV.Desktop.App.App; OrionTV.Desktop.App.AppServices; OrionTV.Desktop.App.DesktopUpdateService; OrionTV.Desktop.App.EmptyStringToVisibilityConverter; OrionTV.Desktop.App.HlsAesDecryptMerger; OrionTV.Desktop.App.ImageLoader; OrionTV.Desktop.App.LiveChannelViewModel; OrionTV.Desktop.App.LocalCachePlaybackCatalog; OrionTV.Desktop.App.MainWindow; OrionTV.Desktop.App.SectionNavigationState; OrionTV.Desktop.App.AppPage; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.INavigationAware; OrionTV.Desktop.App.INavigationVisibilityAware; OrionTV.Desktop.App.OsdController; OrionTV.Desktop.App.PlaybackState; OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.PlayerKeyboardHook; OrionTV.Desktop.App.KbdLlHookStruct; OrionTV.Desktop.App.VodCacheLookup; OrionTV.Desktop.App.VodCacheSession; OrionTV.Desktop.App.CacheFile; OrionTV.Desktop.App.VodCacheService; OrionTV.Desktop.App.InlineProgress<T>; OrionTV.Desktop.App.VodCacheLog; OrionTV.Desktop.App.VodDownloadJobStatus; OrionTV.Desktop.App.VodDownloadManager; OrionTV.Desktop.App.Job; OrionTV.Desktop.App.VodPlayableSourceResolver; OrionTV.Desktop.App.VodSourceProbeStatus; OrionTV.Desktop.App.MediaDecodeProbeStatus; OrionTV.Desktop.App.IMediaDecodeProbe; OrionTV.Desktop.App.VodSourceProbeSampler; OrionTV.Desktop.App.VodSourceHealthDisplay; OrionTV.Desktop.App.VodSourceHealthProbe; OrionTV.Desktop.App.LibVlcMediaDecodeProbe; OrionTV.Desktop.App.WindowMessage"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+        "desktop/OrionTV.Desktop.App/AiSourceWatcher.cs",
+        "desktop/OrionTV.Desktop.App/App.xaml.cs",
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/DesktopUpdateService.cs",
+        "desktop/OrionTV.Desktop.App/EmptyStringToVisibilityConverter.cs",
+        "desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs",
+        "desktop/OrionTV.Desktop.App/ImageLoader.cs",
+        "desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs",
+        "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs",
+        "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/OsdController.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs",
+        "desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheLookup.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+        "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+        "desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs",
+        "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 4,
+        "refactorings": [
+          "Split Component",
+          "Move Class"
+        ],
+        "steps": [
+          "Same split as smell 3: 42 classes \u2192 4 in the root namespace, the rest in the cohesive namespaces Hosting (3 classes), Playback (2), Caching (9), CacheCatalog (2), SourceHealth (8), Updates (1), AiImport (5)"
+        ],
+        "rationale": "The root is no longer oversized (4 classes, far below 30), and each extracted namespace is small and has one responsibility."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 5,
+      "designite": {
+        "Smell": "Unstable Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because this component depends on other components that are less stable than itself. This component depends on following less stable component(s): OrionTV.Desktop.App.Views",
+        "Responsible classes": "OrionTV.Desktop.App.AiImportDialog' OrionTV.Desktop.App.DetailView' OrionTV.Desktop.App.FavoritesView' OrionTV.Desktop.App.HomeView' OrionTV.Desktop.App.LiveView' OrionTV.Desktop.App.LocalVideoView' OrionTV.Desktop.App.PlayerView' OrionTV.Desktop.App.SearchView' OrionTV.Desktop.App.SettingsView",
+        "Participating classes": "OrionTV.Desktop.App.AiImportDialog; OrionTV.Desktop.App.DetailView; OrionTV.Desktop.App.FavoritesView; OrionTV.Desktop.App.HomeView; OrionTV.Desktop.App.LiveView; OrionTV.Desktop.App.LocalVideoView; OrionTV.Desktop.App.PlayerView; OrionTV.Desktop.App.SearchView; OrionTV.Desktop.App.SettingsView"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 5,
+        "refactorings": [
+          "Move Class",
+          "Extract Component"
+        ],
+        "steps": [
+          "Removed every reference from App-project namespaces to the root namespace by moving the services out of it (see smell 1)",
+          "The root now only depends on Views, Hosting and AiImport and has no incoming dependencies"
+        ],
+        "rationale": "The root was stable because many namespaces depended on it, yet it depended on the less stable Views. The root now has Ca = 0 and I = 1, so depending on Views no longer points to a less stable component. Hosting (I\u22480.57) depends only on Caching, SourceHealth, Playback and Updates, which have I = 0. CacheCatalog (I\u22480.67) depends on Hosting and Caching, which are more stable."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 6,
+      "designite": {
+        "Smell": "Unstable Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.LocalPlayback",
+        "Description": "The tool detected the smell in this component because this component depends on other components that are less stable than itself. This component depends on following less stable component(s): OrionTV.Desktop.App",
+        "Responsible classes": "OrionTV.Desktop.App.LocalPlayback.PlaybackState",
+        "Participating classes": "OrionTV.Desktop.App.LocalPlayback.PlaybackState"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 6,
+        "refactorings": [
+          "Move Class"
+        ],
+        "steps": [
+          "Moved PlaybackState (with PlaybackController) to OrionTV.Desktop.App.Playback",
+          "Added `using OrionTV.Desktop.App.Playback;` to LocalPlayback/MpvLocalEngine.cs"
+        ],
+        "rationale": "LocalPlayback depended on the volatile root namespace only for the PlaybackState enum. It now depends on Playback, which has no outgoing App-project dependencies (I = 0), so the dependency points to a more stable component."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 7,
+      "designite": {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [AiImportDialog]' [DetailView]' [FavoritesView]' [HomeView]' [LiveView]' [LocalVideoView' ActiveJobItem' LocalCacheItem' LocalMediaCardItem]' [PlayerShortcutCommand' PlayerShortcutMap' PlayerView' LoadingNoticeMode' PlayerSourceSwitchPolicy' PlayerEpisodeAdvancePolicy]' [SearchView]' [SettingsView]. LCC (Lack of Component Cohesion) = 0'53",
+        "Responsible classes": "OrionTV.Desktop.App.Views.LocalVideoView' OrionTV.Desktop.App.Views.ActiveJobItem' OrionTV.Desktop.App.Views.LocalCacheItem' OrionTV.Desktop.App.Views.LocalMediaCardItem' OrionTV.Desktop.App.Views.AiImportDialog' OrionTV.Desktop.App.Views.DetailView' OrionTV.Desktop.App.Views.FavoritesView' OrionTV.Desktop.App.Views.HomeView' OrionTV.Desktop.App.Views.LiveView' OrionTV.Desktop.App.Views.SearchView' OrionTV.Desktop.App.Views.SettingsView",
+        "Participating classes": "OrionTV.Desktop.App.Views.AiImportDialog; OrionTV.Desktop.App.Views.DetailView; OrionTV.Desktop.App.Views.FavoritesView; OrionTV.Desktop.App.Views.HomeView; OrionTV.Desktop.App.Views.LiveView; OrionTV.Desktop.App.Views.LocalVideoView; OrionTV.Desktop.App.Views.ActiveJobItem; OrionTV.Desktop.App.Views.LocalCacheItem; OrionTV.Desktop.App.Views.LocalMediaCardItem; OrionTV.Desktop.App.Views.PlayerShortcutCommand; OrionTV.Desktop.App.Views.PlayerShortcutMap; OrionTV.Desktop.App.Views.PlayerSourceSwitchPolicy; OrionTV.Desktop.App.Views.PlayerEpisodeAdvancePolicy; OrionTV.Desktop.App.Views.PlayerView; OrionTV.Desktop.App.Views.LoadingNoticeMode; OrionTV.Desktop.App.Views.SearchView; OrionTV.Desktop.App.Views.SettingsView"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs",
+        "desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 7,
+        "refactorings": [
+          "Move Class"
+        ],
+        "steps": [
+          "Moved INavigationAware and INavigationVisibilityAware into Views (the pages implement them; MainWindow consumes them)",
+          "Moved OsdController, PlayerKeyboardHook and LiveChannelViewModel into Views"
+        ],
+        "rationale": "Views had 9 unconnected groups because the pages only shared contracts that lived in another namespace. The page-lifecycle contracts now sit next to the pages that implement them, which connects DetailView, FavoritesView, HomeView, LiveView, LocalVideoView, PlayerView, SearchView and SettingsView. OsdController additionally links LiveView and PlayerView. By my count only AiImportDialog stays separate: 2 groups for about 23 classes, LCC \u2248 0.09 instead of 0.53."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 8,
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App' OrionTV.Desktop.Core",
+        "Responsible classes": "OrionTV.Desktop.App.ImageLoader' OrionTV.Desktop.Core.FavoriteStore' OrionTV.Desktop.App.AppServices' OrionTV.Desktop.Core.IVodSourceClient' OrionTV.Desktop.Core.VodSourceClientFactory' OrionTV.Desktop.Core.PlayRecordStore' OrionTV.Desktop.Core.PlaybackResumePolicy' OrionTV.Desktop.App.IAppHost' OrionTV.Desktop.Core.LocalMediaStore' OrionTV.Desktop.App.LocalCachePlaybackCatalog' OrionTV.Desktop.App.VodCacheService' OrionTV.Desktop.Core.LocalMediaNaming' OrionTV.Desktop.Core.EpisodeLabelFormatter' OrionTV.Desktop.App.OsdController' OrionTV.Desktop.Core.DesktopLiveSourceSettings' OrionTV.Desktop.Core.M3uParser' OrionTV.Desktop.App.VodDownloadManager' OrionTV.Desktop.Core.CatalogService' OrionTV.Desktop.Core.SearchResultSources' OrionTV.Desktop.App.VodSourceHealthProbe' OrionTV.Desktop.App.VodSourceHealthDisplay",
+        "Participating classes": "OrionTV.Desktop.App.ImageLoader; OrionTV.Desktop.Core.FavoriteStore; OrionTV.Desktop.App.AppServices; OrionTV.Desktop.Core.IVodSourceClient; OrionTV.Desktop.Core.VodSourceClientFactory; OrionTV.Desktop.Core.PlayRecordStore; OrionTV.Desktop.Core.PlaybackResumePolicy; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.Core.LocalMediaStore; OrionTV.Desktop.App.LocalCachePlaybackCatalog; OrionTV.Desktop.App.VodCacheService; OrionTV.Desktop.Core.LocalMediaNaming; OrionTV.Desktop.Core.EpisodeLabelFormatter; OrionTV.Desktop.App.OsdController; OrionTV.Desktop.Core.DesktopLiveSourceSettings; OrionTV.Desktop.Core.M3uParser; OrionTV.Desktop.App.VodDownloadManager; OrionTV.Desktop.Core.CatalogService; OrionTV.Desktop.Core.SearchResultSources; OrionTV.Desktop.App.VodSourceHealthProbe; OrionTV.Desktop.App.VodSourceHealthDisplay"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/ImageLoader.cs",
+        "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/OsdController.cs",
+        "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+        "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+        "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 8,
+        "refactorings": [],
+        "steps": [
+          "Only side effect: ImageLoader, IAppHost/AppServices, VodCacheService, OsdController and the source-health types the view methods touch now live in other namespaces (Controls, Hosting, Caching, Views, SourceHealth)"
+        ],
+        "rationale": "Left unchanged in substance. The view methods coordinate several services (catalog, cache, health probe, stores) by design. Removing this would need a new presenter or facade layer for each page, which is a separate redesign and beyond these focused changes. The concern itself is no longer spread over a God root namespace."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 9,
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.Controls' OrionTV.Desktop.Core",
+        "Responsible classes": "OrionTV.Desktop.App.Controls.CardGrid' OrionTV.Desktop.Core.CatalogService' OrionTV.Desktop.Core.CatalogPlayabilityCache",
+        "Participating classes": "OrionTV.Desktop.App.Controls.CardGrid; OrionTV.Desktop.Core.CatalogService; OrionTV.Desktop.Core.CatalogPlayabilityCache"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 9,
+        "refactorings": [],
+        "steps": [
+          "CatalogService and CatalogPlayabilityCache moved to Core.Catalog as part of the Core split; CardGrid only got a using"
+        ],
+        "rationale": "Not addressed separately. The finding comes from a view method using both a reusable control (CardGrid) and the catalog service. That is normal UI composition and is left as it is."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 10,
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App' OrionTV.Desktop.App.LiveTranslation",
+        "Responsible classes": "OrionTV.Desktop.App.PlaybackController' OrionTV.Desktop.App.LiveTranslation.LiveTranslationController' OrionTV.Desktop.App.IAppHost' OrionTV.Desktop.App.AppServices",
+        "Participating classes": "OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.LiveTranslation.LiveTranslationController; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.AppServices"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/LiveTranslation/LiveTranslationController.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 10,
+        "refactorings": [],
+        "steps": [
+          "PlaybackController moved to App.Playback and IAppHost/AppServices to App.Hosting (for smells 1/2/5)"
+        ],
+        "rationale": "Left unchanged in substance. LiveView combines live playback (PlaybackController) with live translation (LiveTranslationController). Merging those components would mix two different concerns, and adding a mediator was beyond this focused refactoring."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 11,
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.Core' OrionTV.Desktop.App.LiveTranslation",
+        "Responsible classes": "OrionTV.Desktop.Core.GeminiLiveTranslateProtocol' OrionTV.Desktop.App.LiveTranslation.OpenAiCredentialStore' OrionTV.Desktop.Core.RollingSubtitleBuffer' OrionTV.Desktop.App.LiveTranslation.LiveTranslationController",
+        "Participating classes": "OrionTV.Desktop.Core.GeminiLiveTranslateProtocol; OrionTV.Desktop.App.LiveTranslation.OpenAiCredentialStore; OrionTV.Desktop.Core.RollingSubtitleBuffer; OrionTV.Desktop.App.LiveTranslation.LiveTranslationController"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/LiveTranslation/LiveTranslationController.cs",
+        "desktop/OrionTV.Desktop.App/LiveTranslation/OpenAiCredentialStore.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 11,
+        "refactorings": [],
+        "steps": [],
+        "rationale": "Left unchanged. SettingsView/LiveView use the translation protocol constants in Core and the credential store and controller in LiveTranslation. This split (portable protocol logic in Core, platform client in App) is deliberate, and Settings in Core needs the protocol defaults."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "no",
+        "verdict": "not_fixed"
+      }
+    },
+    {
+      "id": 12,
+      "designite": {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.LocalPlayback' OrionTV.Desktop.App",
+        "Responsible classes": "OrionTV.Desktop.App.LocalPlayback.MpvHost' OrionTV.Desktop.App.PlaybackController' OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine' OrionTV.Desktop.App.IAppHost' OrionTV.Desktop.App.AppServices",
+        "Participating classes": "OrionTV.Desktop.App.LocalPlayback.MpvHost; OrionTV.Desktop.App.PlaybackController; OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine; OrionTV.Desktop.App.IAppHost; OrionTV.Desktop.App.AppServices"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.App/AppServices.cs",
+        "desktop/OrionTV.Desktop.App/LocalPlayback/MpvHost.cs",
+        "desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs",
+        "desktop/OrionTV.Desktop.App/Navigation.cs",
+        "desktop/OrionTV.Desktop.App/PlaybackController.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 12,
+        "refactorings": [
+          "Move Class"
+        ],
+        "steps": [
+          "Moved PlaybackController and PlaybackState into the dedicated OrionTV.Desktop.App.Playback namespace, which LocalPlayback now also uses for the shared PlaybackState"
+        ],
+        "rationale": "Partially improved. The shared playback state type now lives in one Playback component instead of the God root namespace. PlayerView still switches between the LibVLC engine and the mpv engine, so it still uses both Playback and LocalPlayback. Merging the two would produce a namespace with unconnected classes, so they stay separate."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 13,
+      "designite": {
+        "Smell": "God Component",
+        "Project": "OrionTV.Desktop.Core",
+        "Namespace": "OrionTV.Desktop.Core",
+        "Description": "The tool detected the smell in this component because the component contains high number of classes. Number of classes in the component are: 56",
+        "Responsible classes": "OrionTV.Desktop.Core.CatalogPlayabilityStatus' OrionTV.Desktop.Core.PlaybackStartupSignal' OrionTV.Desktop.Core.ChannelHealth' OrionTV.Desktop.Core.MediaProbeStatus' OrionTV.Desktop.Core.AppleCmsVodItem' OrionTV.Desktop.Core.RealtimeTranslationEventKind' OrionTV.Desktop.Core.CatalogPlayabilityBadge' OrionTV.Desktop.Core.PlaybackFallbackSelector' OrionTV.Desktop.Core.PlaybackStartupPolicy' OrionTV.Desktop.Core.VideoSourceMerger' OrionTV.Desktop.Core.NaturalPathComparer' OrionTV.Desktop.Core.VideoSourceProtocols' OrionTV.Desktop.Core.DesktopPaths' OrionTV.Desktop.Core.DesktopSettingsMigration' OrionTV.Desktop.Core.CatalogTitleMatcher' OrionTV.Desktop.Core.PlaybackMediaOptions' OrionTV.Desktop.Core.ChannelHealthDisplay' OrionTV.Desktop.Core.DesktopSettingsForm' OrionTV.Desktop.Core.SettingsStore' OrionTV.Desktop.Core.AppleCmsMapper' OrionTV.Desktop.Core.PlaybackResumePolicy' OrionTV.Desktop.Core.AiImportPromptBuilder' OrionTV.Desktop.Core.VodSourceClientFactory' OrionTV.Desktop.Core.M3uParser' OrionTV.Desktop.Core.EpisodeLabelFormatter' OrionTV.Desktop.Core.Pcm16TranslationFrameBuffer' OrionTV.Desktop.Core.VodCacheSettings",
+        "Participating classes": "OrionTV.Desktop.Core.AppleCmsUrlBuilder; OrionTV.Desktop.Core.AppleCmsEpisodeParser; OrionTV.Desktop.Core.SearchResultSources; OrionTV.Desktop.Core.AppleCmsMapper; OrionTV.Desktop.Core.AppleCmsClient; OrionTV.Desktop.Core.CatalogPlayabilityStatus; OrionTV.Desktop.Core.CatalogTitleMatcher; OrionTV.Desktop.Core.CatalogPlayabilityBadge; OrionTV.Desktop.Core.CatalogPlayabilityCache; OrionTV.Desktop.Core.PlaybackResumePolicy; OrionTV.Desktop.Core.PlaybackFallbackSelector; OrionTV.Desktop.Core.PlaybackMediaOptions; OrionTV.Desktop.Core.PlaybackStartupWatchdog; OrionTV.Desktop.Core.PlaybackStartupSignal; OrionTV.Desktop.Core.PlaybackStartupPolicy; OrionTV.Desktop.Core.CatalogService; OrionTV.Desktop.Core.ChannelHealth; OrionTV.Desktop.Core.MediaProbeStatus; OrionTV.Desktop.Core.ChannelHealthScoring; OrionTV.Desktop.Core.ChannelHealthDisplay; OrionTV.Desktop.Core.ChannelHealthProbe; OrionTV.Desktop.Core.DeepgramSttProtocol; OrionTV.Desktop.Core.DesktopLiveSourceSettings; OrionTV.Desktop.Core.DoubanClient; OrionTV.Desktop.Core.DoubaoAstProtocol; OrionTV.Desktop.Core.ExtraVideoSourcesStore; OrionTV.Desktop.Core.VideoSourceMerger; OrionTV.Desktop.Core.AiImportPromptBuilder; OrionTV.Desktop.Core.GeminiLiveTranslateProtocol; OrionTV.Desktop.Core.HlsAdSkip; OrionTV.Desktop.Core.HomeCategoryMatcher; OrionTV.Desktop.Core.IVodSourceClient; OrionTV.Desktop.Core.VodSourceClientFactory; OrionTV.Desktop.Core.UnsupportedVodSourceClient; OrionTV.Desktop.Core.LocalMediaNaming; OrionTV.Desktop.Core.NaturalPathComparer; OrionTV.Desktop.Core.LocalMediaStore; OrionTV.Desktop.Core.JsonDictionaryStore<T>; OrionTV.Desktop.Core.FavoriteStore; OrionTV.Desktop.Core.PlayRecordStore; OrionTV.Desktop.Core.M3uParser; OrionTV.Desktop.Core.MacCmsJsonClient; OrionTV.Desktop.Core.MacCmsXmlClient; OrionTV.Desktop.Core.VideoSourceProtocols; OrionTV.Desktop.Core.EpisodeLabelFormatter; OrionTV.Desktop.Core.AppleCmsVodItem; OrionTV.Desktop.Core.RealtimeTranslationEventKind; OrionTV.Desktop.Core.RealtimeTranslationProtocol; OrionTV.Desktop.Core.Pcm16TranslationFrameBuffer; OrionTV.Desktop.Core.RollingSubtitleBuffer; OrionTV.Desktop.Core.DesktopPaths; OrionTV.Desktop.Core.VodCacheSettings; OrionTV.Desktop.Core.DesktopSettingsMigration; OrionTV.Desktop.Core.DesktopSettingsForm; OrionTV.Desktop.Core.SettingsStore; OrionTV.Desktop.Core.VideoSourceSubscriptionParser"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.Core/AppleCms.cs",
+        "desktop/OrionTV.Desktop.Core/CatalogModels.cs",
+        "desktop/OrionTV.Desktop.Core/CatalogService.cs",
+        "desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs",
+        "desktop/OrionTV.Desktop.Core/DeepgramSttProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/DesktopLiveSources.cs",
+        "desktop/OrionTV.Desktop.Core/DoubanClient.cs",
+        "desktop/OrionTV.Desktop.Core/DoubaoAstProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/ExtraVideoSources.cs",
+        "desktop/OrionTV.Desktop.Core/GeminiLiveTranslateProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/HlsAdSkip.cs",
+        "desktop/OrionTV.Desktop.Core/HomeCategoryMatcher.cs",
+        "desktop/OrionTV.Desktop.Core/IVodSourceClient.cs",
+        "desktop/OrionTV.Desktop.Core/LocalMediaLibrary.cs",
+        "desktop/OrionTV.Desktop.Core/LocalStore.cs",
+        "desktop/OrionTV.Desktop.Core/M3uParser.cs",
+        "desktop/OrionTV.Desktop.Core/MacCmsJsonClient.cs",
+        "desktop/OrionTV.Desktop.Core/MacCmsXmlClient.cs",
+        "desktop/OrionTV.Desktop.Core/Models.cs",
+        "desktop/OrionTV.Desktop.Core/RealtimeTranslationProtocol.cs",
+        "desktop/OrionTV.Desktop.Core/Settings.cs",
+        "desktop/OrionTV.Desktop.Core/VideoSourceSubscriptionParser.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 13,
+        "refactorings": [
+          "Split Component",
+          "Move Class"
+        ],
+        "steps": [
+          "Created Core.Catalog: CatalogService/CatalogItem (CatalogService.cs), DoubanClient + DoubanItem (DoubanClient.cs), and the new Catalog/CatalogPlayability.cs with CatalogPlayabilityStatus, CatalogPlayability, CatalogPlayabilityBadge, CatalogPlayabilityCache (removed from CatalogModels.cs)",
+          "Created Core.VodSources: AppleCms.cs (URL builder, episode parser, mapper, client), IVodSourceClient.cs (factory, unsupported client), MacCmsJsonClient.cs, MacCmsXmlClient.cs, HomeCategoryMatcher.cs, and the new VodSources/AppleCmsVodItem.cs (moved out of Models.cs)",
+          "Moved SearchResultSources out of AppleCms.cs into the new file Core/SearchResultSources.cs (stays in Core, used by the playback policies)",
+          "Created Core.StreamHealth: ChannelHealthProbe.cs (ChannelHealth, MediaProbeStatus, scoring, display, probe)",
+          "Created Core.Library: LocalStore.cs (JsonDictionaryStore, FavoriteStore, PlayRecordStore) and LocalMediaLibrary.cs (LocalMediaNaming, LocalMediaStore)",
+          "Added the matching usings in App and Tests"
+        ],
+        "rationale": "Core had 56 classes covering many concerns. Each extracted namespace is one connected concern: the VOD protocol clients, catalog orchestration, stream health probing, and the persisted user library. They depend only on the shared kernel left in Core (models, settings, playback policies) and Core depends on none of them, so no cycles are introduced. Catalog \u2192 VodSources is the only edge between new namespaces, and it points to a more stable component. Core now has 29 classes."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    },
+    {
+      "id": 14,
+      "designite": {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.Tests",
+        "Namespace": "OrionTV.Desktop.Tests",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [AiCliLauncherTests]' [AppleCmsServiceTests' StubHandler' VodProtocolTests]' [ChannelHealthScoringTests' RecordingHandler' FlvResponseHandler' HtmlResponseHandler' MisleadingHtmlResponseHandler' EncryptedHlsHandler' HtmlSegmentHandler' VariantRecordingHandler]' [DesktopSettingsTests]' [LocalStoreTests' TestStringStore]' [DesktopUpdateServiceTests' StubHttpMessageHandler' InlineProgress]' [ExtraVideoSourcesTests]' [HlsAdSkipTests]' [HomeCategoryMatcherTests]' [LocalCachePlaybackCatalogTests]' [LocalMediaLibraryTests]' [M3uParserTests]' [MpvLocalEngineTests]' [PlaybackResumePolicyTests]' [WpfNavigationCollection' PlayerNavigationSurfaceTests]' [PlayerShortcutTests]' [PlayRecordHistoryTests]' [RealtimeTranslationProtocolTests]' [GeminiLiveTranslateProtocolTests]' [DeepgramSttProtocolTests]' [DoubaoAstProtocolTests]' [SubscriptionParserTests]' [VodCacheLookupTests]' [VodCacheServiceTests' InlineProgress<T>' BlockingFirstProgress' FakeHlsServer]' [VodSourceHealthProbeTests' StubDecodeProbe]. LCC (Lack of Component Cohesion) = 0'6",
+        "Responsible classes": "OrionTV.Desktop.Tests.AppleCmsServiceTests' OrionTV.Desktop.Tests.StubHandler' OrionTV.Desktop.Tests.VodProtocolTests' OrionTV.Desktop.Tests.DesktopUpdateServiceTests' OrionTV.Desktop.Tests.StubHttpMessageHandler' OrionTV.Desktop.Tests.InlineProgress' OrionTV.Desktop.Tests.LocalStoreTests' OrionTV.Desktop.Tests.TestStringStore' OrionTV.Desktop.Tests.WpfNavigationCollection' OrionTV.Desktop.Tests.PlayerNavigationSurfaceTests' OrionTV.Desktop.Tests.VodSourceHealthProbeTests' OrionTV.Desktop.Tests.StubDecodeProbe' OrionTV.Desktop.Tests.AiCliLauncherTests' OrionTV.Desktop.Tests.DesktopSettingsTests' OrionTV.Desktop.Tests.ExtraVideoSourcesTests' OrionTV.Desktop.Tests.HlsAdSkipTests' OrionTV.Desktop.Tests.HomeCategoryMatcherTests' OrionTV.Desktop.Tests.LocalCachePlaybackCatalogTests' OrionTV.Desktop.Tests.LocalMediaLibraryTests' OrionTV.Desktop.Tests.M3uParserTests' OrionTV.Desktop.Tests.MpvLocalEngineTests' OrionTV.Desktop.Tests.PlaybackResumePolicyTests' OrionTV.Desktop.Tests.PlayerShortcutTests' OrionTV.Desktop.Tests.PlayRecordHistoryTests' OrionTV.Desktop.Tests.RealtimeTranslationProtocolTests' OrionTV.Desktop.Tests.GeminiLiveTranslateProtocolTests' OrionTV.Desktop.Tests.DeepgramSttProtocolTests' OrionTV.Desktop.Tests.DoubaoAstProtocolTests' OrionTV.Desktop.Tests.SubscriptionParserTests' OrionTV.Desktop.Tests.VodCacheLookupTests",
+        "Participating classes": "OrionTV.Desktop.Tests.AiCliLauncherTests; OrionTV.Desktop.Tests.AppleCmsServiceTests; OrionTV.Desktop.Tests.StubHandler; OrionTV.Desktop.Tests.ChannelHealthScoringTests; OrionTV.Desktop.Tests.RecordingHandler; OrionTV.Desktop.Tests.FlvResponseHandler; OrionTV.Desktop.Tests.HtmlResponseHandler; OrionTV.Desktop.Tests.MisleadingHtmlResponseHandler; OrionTV.Desktop.Tests.EncryptedHlsHandler; OrionTV.Desktop.Tests.HtmlSegmentHandler; OrionTV.Desktop.Tests.VariantRecordingHandler; OrionTV.Desktop.Tests.DesktopSettingsTests; OrionTV.Desktop.Tests.LocalStoreTests; OrionTV.Desktop.Tests.TestStringStore; OrionTV.Desktop.Tests.DesktopUpdateServiceTests; OrionTV.Desktop.Tests.StubHttpMessageHandler; OrionTV.Desktop.Tests.InlineProgress; OrionTV.Desktop.Tests.ExtraVideoSourcesTests; OrionTV.Desktop.Tests.HlsAdSkipTests; OrionTV.Desktop.Tests.HomeCategoryMatcherTests; OrionTV.Desktop.Tests.LocalCachePlaybackCatalogTests; OrionTV.Desktop.Tests.LocalMediaLibraryTests; OrionTV.Desktop.Tests.M3uParserTests; OrionTV.Desktop.Tests.MpvLocalEngineTests; OrionTV.Desktop.Tests.PlaybackResumePolicyTests; OrionTV.Desktop.Tests.WpfNavigationCollection; OrionTV.Desktop.Tests.PlayerNavigationSurfaceTests; OrionTV.Desktop.Tests.PlayerShortcutTests; OrionTV.Desktop.Tests.PlayRecordHistoryTests; OrionTV.Desktop.Tests.RealtimeTranslationProtocolTests; OrionTV.Desktop.Tests.GeminiLiveTranslateProtocolTests; OrionTV.Desktop.Tests.DeepgramSttProtocolTests; OrionTV.Desktop.Tests.DoubaoAstProtocolTests; OrionTV.Desktop.Tests.SubscriptionParserTests; OrionTV.Desktop.Tests.VodCacheLookupTests; OrionTV.Desktop.Tests.VodCacheServiceTests; OrionTV.Desktop.Tests.InlineProgress<T>; OrionTV.Desktop.Tests.BlockingFirstProgress; OrionTV.Desktop.Tests.FakeHlsServer; OrionTV.Desktop.Tests.VodProtocolTests; OrionTV.Desktop.Tests.VodSourceHealthProbeTests; OrionTV.Desktop.Tests.StubDecodeProbe"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ExtraVideoSourcesTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HlsAdSkipTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/M3uParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs",
+        "desktop/OrionTV.Desktop.Tests/RealtimeTranslationProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/SubscriptionParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 14,
+        "refactorings": [
+          "Split Component"
+        ],
+        "steps": [
+          "Moved the tests of App-project classes (AiCliLauncher, DesktopUpdateService, LocalCachePlaybackCatalog, MpvLocalEngine, PlaybackResumePolicy/PlayerSourceSwitch, PlayerNavigationSurface, PlayerShortcut, VodCacheLookup, VodCacheService, VodSourceHealthProbe) and their helpers to OrionTV.Desktop.Tests.App"
+        ],
+        "rationale": "Partially addressed. Test classes are independent of each other by nature, so low cohesion between test fixtures is expected and cannot be removed without coupling tests artificially. Grouping the tests by the project they test gives each test namespace one responsibility. No assertions changed."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "no",
+        "verdict": "not_fixed"
+      }
+    },
+    {
+      "id": 15,
+      "designite": {
+        "Smell": "God Component",
+        "Project": "OrionTV.Desktop.Tests",
+        "Namespace": "OrionTV.Desktop.Tests",
+        "Description": "The tool detected the smell in this component because the component contains high number of classes. Number of classes in the component are: 42",
+        "Responsible classes": "OrionTV.Desktop.Tests.WpfNavigationCollection' OrionTV.Desktop.Tests.RecordingHandler' OrionTV.Desktop.Tests.FlvResponseHandler' OrionTV.Desktop.Tests.HtmlResponseHandler' OrionTV.Desktop.Tests.MisleadingHtmlResponseHandler' OrionTV.Desktop.Tests.EncryptedHlsHandler' OrionTV.Desktop.Tests.HtmlSegmentHandler' OrionTV.Desktop.Tests.VariantRecordingHandler' OrionTV.Desktop.Tests.LocalStoreTests' OrionTV.Desktop.Tests.TestStringStore' OrionTV.Desktop.Tests.StubHttpMessageHandler' OrionTV.Desktop.Tests.InlineProgress' OrionTV.Desktop.Tests.InlineProgress<T>",
+        "Participating classes": "OrionTV.Desktop.Tests.AiCliLauncherTests; OrionTV.Desktop.Tests.AppleCmsServiceTests; OrionTV.Desktop.Tests.StubHandler; OrionTV.Desktop.Tests.ChannelHealthScoringTests; OrionTV.Desktop.Tests.RecordingHandler; OrionTV.Desktop.Tests.FlvResponseHandler; OrionTV.Desktop.Tests.HtmlResponseHandler; OrionTV.Desktop.Tests.MisleadingHtmlResponseHandler; OrionTV.Desktop.Tests.EncryptedHlsHandler; OrionTV.Desktop.Tests.HtmlSegmentHandler; OrionTV.Desktop.Tests.VariantRecordingHandler; OrionTV.Desktop.Tests.DesktopSettingsTests; OrionTV.Desktop.Tests.LocalStoreTests; OrionTV.Desktop.Tests.TestStringStore; OrionTV.Desktop.Tests.DesktopUpdateServiceTests; OrionTV.Desktop.Tests.StubHttpMessageHandler; OrionTV.Desktop.Tests.InlineProgress; OrionTV.Desktop.Tests.ExtraVideoSourcesTests; OrionTV.Desktop.Tests.HlsAdSkipTests; OrionTV.Desktop.Tests.HomeCategoryMatcherTests; OrionTV.Desktop.Tests.LocalCachePlaybackCatalogTests; OrionTV.Desktop.Tests.LocalMediaLibraryTests; OrionTV.Desktop.Tests.M3uParserTests; OrionTV.Desktop.Tests.MpvLocalEngineTests; OrionTV.Desktop.Tests.PlaybackResumePolicyTests; OrionTV.Desktop.Tests.WpfNavigationCollection; OrionTV.Desktop.Tests.PlayerNavigationSurfaceTests; OrionTV.Desktop.Tests.PlayerShortcutTests; OrionTV.Desktop.Tests.PlayRecordHistoryTests; OrionTV.Desktop.Tests.RealtimeTranslationProtocolTests; OrionTV.Desktop.Tests.GeminiLiveTranslateProtocolTests; OrionTV.Desktop.Tests.DeepgramSttProtocolTests; OrionTV.Desktop.Tests.DoubaoAstProtocolTests; OrionTV.Desktop.Tests.SubscriptionParserTests; OrionTV.Desktop.Tests.VodCacheLookupTests; OrionTV.Desktop.Tests.VodCacheServiceTests; OrionTV.Desktop.Tests.InlineProgress<T>; OrionTV.Desktop.Tests.BlockingFirstProgress; OrionTV.Desktop.Tests.FakeHlsServer; OrionTV.Desktop.Tests.VodProtocolTests; OrionTV.Desktop.Tests.VodSourceHealthProbeTests; OrionTV.Desktop.Tests.StubDecodeProbe"
+      },
+      "files": [
+        "desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+        "desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/ExtraVideoSourcesTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HlsAdSkipTests.cs",
+        "desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs",
+        "desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/M3uParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs",
+        "desktop/OrionTV.Desktop.Tests/RealtimeTranslationProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/SubscriptionParserTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs",
+        "desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs"
+      ],
+      "explanation": null,
+      "reproduced": true,
+      "answer": {
+        "smell_id": 15,
+        "refactorings": [
+          "Split Component"
+        ],
+        "steps": [
+          "Split the test namespace: OrionTV.Desktop.Tests (Core tests, 25 classes) and OrionTV.Desktop.Tests.App (App-project tests, 17 classes)",
+          "Changed only namespace declarations, usings and one fully qualified AppServices reference (now OrionTV.Desktop.App.Hosting.AppServices)"
+        ],
+        "rationale": "The 42-class test namespace is now two namespaces of 25 and 17 classes, split by the project under test. Each helper class (StubHttpMessageHandler, InlineProgress, FakeHlsServer, StubDecodeProbe, \u2026) stays in the same file and namespace as the tests that use it, and the test logic is unchanged."
+      },
+      "checks": {
+        "builds": "yes",
+        "tests_pass": "failing_before",
+        "smell_removed": "yes",
+        "verdict": "fixed"
+      }
+    }
+  ],
+  "session": {
+    "summary": "Broke the App\u2194Views and App\u2194Views\u2194LocalPlayback cycles by turning the App project's root namespace into a pure shell (App, MainWindow, the app-level converter) and moving every service it used to hold into cohesive sub-namespaces: Hosting (AppServices, IAppHost, AppPage, navigation parameter records), Playback (PlaybackController, PlaybackState), Caching (VodCacheService, HlsAesDecryptMerger, VodDownloadManager), CacheCatalog (VodCacheLookup, LocalCachePlaybackCatalog), SourceHealth (VodSourceHealthProbe, VodPlayableSourceResolver), Updates (DesktopUpdateService), AiImport (AiCliLauncher, AiSourceWatcher). ImageLoader went to Controls, and the page-only helpers plus the page contracts INavigationAware/INavigationVisibilityAware went to Views. Core was split by concern into Core.Catalog, Core.VodSources, Core.StreamHealth and Core.Library, all depending one-way on Core (56 \u2192 29 classes in Core). Tests for App-project classes moved to OrionTV.Desktop.Tests.App, changing only namespaces and usings (42 \u2192 25 + 17 classes). Small moved types got new files in matching folders; large files only had their namespace declaration changed. The solution builds; tests were not run because no test runner was available. Smells 7\u201312 and 14 are only reduced or left unchanged, as explained per smell.",
+    "builds": "yes",
+    "tests_pass": "failing_before",
+    "designite_after": "ok",
+    "new_smells": [
+      {
+        "Smell": "Unstable Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Hosting",
+        "Description": "The tool detected the smell in this component because this component depends on other components that are less stable than itself. This component depends on following less stable component(s): OrionTV.Desktop.App.SourceHealth",
+        "Responsible classes": "OrionTV.Desktop.App.Hosting.VodPlayableSourceResolver' OrionTV.Desktop.App.Hosting.VodSourceHealthProbe' OrionTV.Desktop.App.Hosting.LibVlcMediaDecodeProbe",
+        "Participating classes": "OrionTV.Desktop.App.Hosting.VodPlayableSourceResolver; OrionTV.Desktop.App.Hosting.VodSourceHealthProbe; OrionTV.Desktop.App.Hosting.LibVlcMediaDecodeProbe"
+      },
+      {
+        "Smell": "Unstable Dependency",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.CacheCatalog",
+        "Description": "The tool detected the smell in this component because this component depends on other components that are less stable than itself. This component depends on following less stable component(s): OrionTV.Desktop.Core.Library",
+        "Responsible classes": "OrionTV.Desktop.App.CacheCatalog.LocalMediaNaming",
+        "Participating classes": "OrionTV.Desktop.App.CacheCatalog.LocalMediaNaming"
+      },
+      {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.Hosting' OrionTV.Desktop.App.AiImport",
+        "Responsible classes": "OrionTV.Desktop.App.Hosting.AppServices' OrionTV.Desktop.App.AiImport.AiSourceWatcher",
+        "Participating classes": "OrionTV.Desktop.App.Hosting.AppServices; OrionTV.Desktop.App.AiImport.AiSourceWatcher"
+      },
+      {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Hosting",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.Core.Catalog' OrionTV.Desktop.App.SourceHealth' OrionTV.Desktop.Core",
+        "Responsible classes": "OrionTV.Desktop.Core.Catalog.CatalogService' OrionTV.Desktop.App.SourceHealth.VodSourceHealthProbe' OrionTV.Desktop.Core.SettingsStore' OrionTV.Desktop.Core.VideoSourceMerger' OrionTV.Desktop.Core.Catalog.CatalogPlayabilityCache' OrionTV.Desktop.App.SourceHealth.VodPlayableSourceResolver",
+        "Participating classes": "OrionTV.Desktop.Core.Catalog.CatalogService; OrionTV.Desktop.App.SourceHealth.VodSourceHealthProbe; OrionTV.Desktop.Core.SettingsStore; OrionTV.Desktop.Core.VideoSourceMerger; OrionTV.Desktop.Core.Catalog.CatalogPlayabilityCache; OrionTV.Desktop.App.SourceHealth.VodPlayableSourceResolver"
+      },
+      {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.Caching' OrionTV.Desktop.App.CacheCatalog",
+        "Responsible classes": "OrionTV.Desktop.App.Caching.VodDownloadManager' OrionTV.Desktop.App.CacheCatalog.VodCacheLookup' OrionTV.Desktop.App.Caching.VodCacheService",
+        "Participating classes": "OrionTV.Desktop.App.Caching.VodDownloadManager; OrionTV.Desktop.App.CacheCatalog.VodCacheLookup; OrionTV.Desktop.App.Caching.VodCacheService"
+      },
+      {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.Controls' OrionTV.Desktop.Core.Catalog",
+        "Responsible classes": "OrionTV.Desktop.App.Controls.CardGrid' OrionTV.Desktop.Core.Catalog.CatalogService' OrionTV.Desktop.Core.Catalog.CatalogPlayabilityCache",
+        "Participating classes": "OrionTV.Desktop.App.Controls.CardGrid; OrionTV.Desktop.Core.Catalog.CatalogService; OrionTV.Desktop.Core.Catalog.CatalogPlayabilityCache"
+      },
+      {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.App",
+        "Namespace": "OrionTV.Desktop.App.Views",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.App.LocalPlayback' OrionTV.Desktop.App.Playback",
+        "Responsible classes": "OrionTV.Desktop.App.LocalPlayback.MpvHost' OrionTV.Desktop.App.Playback.PlaybackController' OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine",
+        "Participating classes": "OrionTV.Desktop.App.LocalPlayback.MpvHost; OrionTV.Desktop.App.Playback.PlaybackController; OrionTV.Desktop.App.LocalPlayback.MpvLocalEngine"
+      },
+      {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.Core",
+        "Namespace": "OrionTV.Desktop.Core",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [CatalogTitleMatcher]' [PlaybackResumePolicy' EpisodeLabelFormatter' SearchResultSources' PlaybackFallbackSelector]' [PlaybackMediaOptions]' [PlaybackStartupWatchdog]' [PlaybackStartupSignal' PlaybackStartupPolicy]' [DeepgramSttProtocol' GeminiLiveTranslateProtocol' DoubaoAstProtocol]' [DesktopLiveSourceSettings' DesktopSettingsForm' ExtraVideoSourcesStore' VideoSourceProtocols' DesktopPaths' VodCacheSettings' DesktopSettingsMigration' SettingsStore' VideoSourceSubscriptionParser' AiImportPromptBuilder]' [VideoSourceMerger]' [HlsAdSkip]' [M3uParser]' [RealtimeTranslationEventKind' RealtimeTranslationProtocol' Pcm16TranslationFrameBuffer]' [RollingSubtitleBuffer]. LCC (Lack of Component Cohesion) = 0'41",
+        "Responsible classes": "OrionTV.Desktop.Core.RealtimeTranslationEventKind' OrionTV.Desktop.Core.RealtimeTranslationProtocol' OrionTV.Desktop.Core.Pcm16TranslationFrameBuffer' OrionTV.Desktop.Core.PlaybackStartupSignal' OrionTV.Desktop.Core.PlaybackStartupPolicy' OrionTV.Desktop.Core.CatalogTitleMatcher' OrionTV.Desktop.Core.PlaybackMediaOptions' OrionTV.Desktop.Core.PlaybackStartupWatchdog' OrionTV.Desktop.Core.VideoSourceMerger' OrionTV.Desktop.Core.HlsAdSkip' OrionTV.Desktop.Core.M3uParser' OrionTV.Desktop.Core.RollingSubtitleBuffer",
+        "Participating classes": "OrionTV.Desktop.Core.CatalogTitleMatcher; OrionTV.Desktop.Core.PlaybackResumePolicy; OrionTV.Desktop.Core.PlaybackFallbackSelector; OrionTV.Desktop.Core.PlaybackMediaOptions; OrionTV.Desktop.Core.PlaybackStartupWatchdog; OrionTV.Desktop.Core.PlaybackStartupSignal; OrionTV.Desktop.Core.PlaybackStartupPolicy; OrionTV.Desktop.Core.DeepgramSttProtocol; OrionTV.Desktop.Core.DesktopLiveSourceSettings; OrionTV.Desktop.Core.DoubaoAstProtocol; OrionTV.Desktop.Core.ExtraVideoSourcesStore; OrionTV.Desktop.Core.VideoSourceMerger; OrionTV.Desktop.Core.AiImportPromptBuilder; OrionTV.Desktop.Core.GeminiLiveTranslateProtocol; OrionTV.Desktop.Core.HlsAdSkip; OrionTV.Desktop.Core.M3uParser; OrionTV.Desktop.Core.VideoSourceProtocols; OrionTV.Desktop.Core.EpisodeLabelFormatter; OrionTV.Desktop.Core.RealtimeTranslationEventKind; OrionTV.Desktop.Core.RealtimeTranslationProtocol; OrionTV.Desktop.Core.Pcm16TranslationFrameBuffer; OrionTV.Desktop.Core.RollingSubtitleBuffer; OrionTV.Desktop.Core.SearchResultSources; OrionTV.Desktop.Core.DesktopPaths; OrionTV.Desktop.Core.VodCacheSettings; OrionTV.Desktop.Core.DesktopSettingsMigration; OrionTV.Desktop.Core.DesktopSettingsForm; OrionTV.Desktop.Core.SettingsStore; OrionTV.Desktop.Core.VideoSourceSubscriptionParser"
+      },
+      {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.Core",
+        "Namespace": "OrionTV.Desktop.Core.Catalog",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.Core.VodSources' OrionTV.Desktop.Core",
+        "Responsible classes": "OrionTV.Desktop.Core.VodSources.IVodSourceClient' OrionTV.Desktop.Core.SearchResultSources' OrionTV.Desktop.Core.CatalogTitleMatcher",
+        "Participating classes": "OrionTV.Desktop.Core.VodSources.IVodSourceClient; OrionTV.Desktop.Core.SearchResultSources; OrionTV.Desktop.Core.CatalogTitleMatcher"
+      },
+      {
+        "Smell": "Dense Structure",
+        "Project": "<All projects included>",
+        "Namespace": "<All namespaces included>",
+        "Description": "The tool detected the smell because all the analyzed components exhibit excessive and dense dependencies among themselves. Average degree = 5'30  All the dependencies among components: from: OrionTV.Desktop.Core.VodSources' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.Core.Catalog' to: OrionTV.Desktop.Core.VodSources' from: OrionTV.Desktop.Core.Catalog' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.Core.StreamHealth' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.Core.Library' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.AiImport' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App' to: OrionTV.Desktop.App.AiImport' from: OrionTV.Desktop.App' to: OrionTV.Desktop.App.Hosting' from: OrionTV.Desktop.App' to: OrionTV.Desktop.App.Views' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.Core.VodSources' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.Core.Catalog' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.Core.StreamHealth' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.Core.Library' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.App.Updates' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.App.Caching' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.App.Playback' from: OrionTV.Desktop.App.Hosting' to: OrionTV.Desktop.App.SourceHealth' from: OrionTV.Desktop.App.CacheCatalog' to: OrionTV.Desktop.Core.Library' from: OrionTV.Desktop.App.Controls' to: OrionTV.Desktop.Core.Catalog' from: OrionTV.Desktop.App.Updates' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.Caching' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.LiveTranslation' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.LocalPlayback' to: OrionTV.Desktop.App.Playback' from: OrionTV.Desktop.App.Playback' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.AiImport' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.Hosting' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.CacheCatalog' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.Controls' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.Caching' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.SourceHealth' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.Core.Catalog' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.Core.Library' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.Core.StreamHealth' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.LiveTranslation' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.Playback' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.LocalPlayback' from: OrionTV.Desktop.App.Views' to: OrionTV.Desktop.App.Updates' from: OrionTV.Desktop.App.SourceHealth' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.App.SourceHealth' to: OrionTV.Desktop.Core.StreamHealth' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.AiImport' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.Updates' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.CacheCatalog' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.LocalPlayback' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.Core.Library' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.Views' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.Hosting' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.Playback' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.Caching' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.Core.Catalog' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.Core.StreamHealth' from: OrionTV.Desktop.Tests.App' to: OrionTV.Desktop.App.SourceHealth' from: OrionTV.Desktop.Tests' to: OrionTV.Desktop.Core.VodSources' from: OrionTV.Desktop.Tests' to: OrionTV.Desktop.Core' from: OrionTV.Desktop.Tests' to: OrionTV.Desktop.Core.Catalog' from: OrionTV.Desktop.Tests' to: OrionTV.Desktop.Core.StreamHealth' from: OrionTV.Desktop.Tests' to: OrionTV.Desktop.App.Hosting' from: OrionTV.Desktop.Tests' to: OrionTV.Desktop.Core.Library.",
+        "Responsible classes": "OrionTV.Desktop.Tests.App.AiCliLauncherTests' OrionTV.Desktop.Tests.App.DesktopUpdateServiceTests' OrionTV.Desktop.Tests.App.LocalCachePlaybackCatalogTests' OrionTV.Desktop.Tests.App.MpvLocalEngineTests' OrionTV.Desktop.Tests.App.PlaybackResumePolicyTests' OrionTV.Desktop.Tests.App.PlaybackResumePolicyTests' OrionTV.Desktop.Tests.App.PlaybackResumePolicyTests' OrionTV.Desktop.Tests.App.PlayerNavigationSurfaceTests' OrionTV.Desktop.Tests.App.PlayerNavigationSurfaceTests' OrionTV.Desktop.Tests.App.PlayerNavigationSurfaceTests' OrionTV.Desktop.Tests.App.VodCacheServiceTests' OrionTV.Desktop.Tests.App.VodSourceHealthProbeTests' OrionTV.Desktop.Tests.App.VodSourceHealthProbeTests' OrionTV.Desktop.Tests.App.VodSourceHealthProbeTests",
+        "Participating classes": "OrionTV.Desktop.Core.VodSources.VodSourceClientFactory; OrionTV.Desktop.Core.Catalog.CatalogService; OrionTV.Desktop.Core.Catalog.CatalogPlayabilityCache; OrionTV.Desktop.Core.StreamHealth.ChannelHealthProbe; OrionTV.Desktop.Core.Library.LocalMediaNaming; OrionTV.Desktop.Core.Library.JsonDictionaryStore<T>; OrionTV.Desktop.Core.Library.FavoriteStore; OrionTV.Desktop.Core.Library.PlayRecordStore; OrionTV.Desktop.Core.VodSources.VodSourceClientFactory; OrionTV.Desktop.Core.Catalog.CatalogService; OrionTV.Desktop.Core.Catalog.CatalogPlayabilityCache; OrionTV.Desktop.Core.StreamHealth.ChannelHealthProbe; OrionTV.Desktop.Core.Library.LocalMediaNaming; OrionTV.Desktop.Core.Library.JsonDictionaryStore<T>; OrionTV.Desktop.Core.Library.FavoriteStore; OrionTV.Desktop.Core.Library.PlayRecordStore; OrionTV.Desktop.Core.VodSources.VodSourceClientFactory; OrionTV.Desktop.Core.Catalog.CatalogService; OrionTV.Desktop.Core.Catalog.CatalogPlayabilityCache; OrionTV.Desktop.Core.StreamHealth.ChannelHealthProbe; OrionTV.Desktop.Core.Library.LocalMediaNaming; OrionTV.Desktop.Core.Library.JsonDictionaryStore<T>; OrionTV.Desktop.Core.Library.FavoriteStore; OrionTV.Desktop.Core.Library.PlayRecordStore"
+      },
+      {
+        "Smell": "Feature Concentration",
+        "Project": "OrionTV.Desktop.Tests",
+        "Namespace": "OrionTV.Desktop.Tests.App",
+        "Description": "The tool detected the smell in this component because the component realizes more than one architectural concern/feature. Independent sets of related classes within this component are: [AiCliLauncherTests]' [DesktopUpdateServiceTests' StubHttpMessageHandler' InlineProgress]' [LocalCachePlaybackCatalogTests]' [MpvLocalEngineTests]' [PlaybackResumePolicyTests]' [WpfNavigationCollection' PlayerNavigationSurfaceTests]' [PlayerShortcutTests]' [VodCacheLookupTests]' [VodCacheServiceTests' InlineProgress<T>' BlockingFirstProgress' FakeHlsServer]' [VodSourceHealthProbeTests' StubDecodeProbe]. LCC (Lack of Component Cohesion) = 0'59",
+        "Responsible classes": "OrionTV.Desktop.Tests.App.DesktopUpdateServiceTests' OrionTV.Desktop.Tests.App.StubHttpMessageHandler' OrionTV.Desktop.Tests.App.InlineProgress' OrionTV.Desktop.Tests.App.WpfNavigationCollection' OrionTV.Desktop.Tests.App.PlayerNavigationSurfaceTests' OrionTV.Desktop.Tests.App.VodSourceHealthProbeTests' OrionTV.Desktop.Tests.App.StubDecodeProbe' OrionTV.Desktop.Tests.App.AiCliLauncherTests' OrionTV.Desktop.Tests.App.LocalCachePlaybackCatalogTests' OrionTV.Desktop.Tests.App.MpvLocalEngineTests' OrionTV.Desktop.Tests.App.PlaybackResumePolicyTests' OrionTV.Desktop.Tests.App.PlayerShortcutTests' OrionTV.Desktop.Tests.App.VodCacheLookupTests",
+        "Participating classes": "OrionTV.Desktop.Tests.App.AiCliLauncherTests; OrionTV.Desktop.Tests.App.DesktopUpdateServiceTests; OrionTV.Desktop.Tests.App.StubHttpMessageHandler; OrionTV.Desktop.Tests.App.InlineProgress; OrionTV.Desktop.Tests.App.LocalCachePlaybackCatalogTests; OrionTV.Desktop.Tests.App.MpvLocalEngineTests; OrionTV.Desktop.Tests.App.PlaybackResumePolicyTests; OrionTV.Desktop.Tests.App.WpfNavigationCollection; OrionTV.Desktop.Tests.App.PlayerNavigationSurfaceTests; OrionTV.Desktop.Tests.App.PlayerShortcutTests; OrionTV.Desktop.Tests.App.VodCacheLookupTests; OrionTV.Desktop.Tests.App.VodCacheServiceTests; OrionTV.Desktop.Tests.App.InlineProgress<T>; OrionTV.Desktop.Tests.App.BlockingFirstProgress; OrionTV.Desktop.Tests.App.FakeHlsServer; OrionTV.Desktop.Tests.App.VodSourceHealthProbeTests; OrionTV.Desktop.Tests.App.StubDecodeProbe"
+      },
+      {
+        "Smell": "Scattered Functionality",
+        "Project": "OrionTV.Desktop.Tests",
+        "Namespace": "OrionTV.Desktop.Tests",
+        "Description": "The tool detected the smell in this component because a set of two or more components realizes the same high-level architectural concern. Following components realize the same concern: OrionTV.Desktop.Core.VodSources' OrionTV.Desktop.Core",
+        "Responsible classes": "OrionTV.Desktop.Core.VodSources.AppleCmsEpisodeParser' OrionTV.Desktop.Core.EpisodeLabelFormatter' OrionTV.Desktop.Core.VodSources.AppleCmsMapper' OrionTV.Desktop.Core.SearchResultSources",
+        "Participating classes": "OrionTV.Desktop.Core.VodSources.AppleCmsEpisodeParser; OrionTV.Desktop.Core.EpisodeLabelFormatter; OrionTV.Desktop.Core.VodSources.AppleCmsMapper; OrionTV.Desktop.Core.SearchResultSources"
+      }
+    ],
+    "steps": [
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "list_files",
+            "input": {
+              "path": "desktop"
+            },
+            "result_chars": 5996,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+              "start_line": 1
+            },
+            "result_chars": 14898,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "^namespace|^using OrionTV",
+              "path": "desktop/OrionTV.Desktop.App"
+            },
+            "result_chars": 7375,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "^(public |internal |sealed |static |file )*(partial )?(sealed |static |abstract )*(class|record|enum|interface|struct|record struct) ",
+              "path": "desktop/OrionTV.Desktop.App"
+            },
+            "result_chars": 9540,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Navigation.cs",
+              "start_line": 1
+            },
+            "result_chars": 2789,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+              "start_line": 1
+            },
+            "result_chars": 17174,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/AppServices.cs",
+              "start_line": 1
+            },
+            "result_chars": 11447,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/PlaybackController.cs",
+              "start_line": 1
+            },
+            "result_chars": 12378,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "PlaybackState|AppServices|IAppHost",
+              "path": "desktop/OrionTV.Desktop.App/LocalPlayback"
+            },
+            "result_chars": 2078,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "PlaybackController|AppServices|IAppHost|ImageLoader|VodCache|OsdController|AppPage|PlayParameter|DetailParameter|LiveChannelViewModel|EmptyStringToVisibility|AiCliLauncher|DesktopUpdate",
+              "path": "desktop/OrionTV.Desktop.App/LiveTranslation"
+            },
+            "result_chars": 10,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "PlaybackController|AppServices|IAppHost|ImageLoader|VodCache|OsdController|AppPage|PlayParameter|DetailParameter|LiveChannelViewModel|EmptyStringToVisibility|local:|xmlns",
+              "path": "desktop/OrionTV.Desktop.App/Controls"
+            },
+            "result_chars": 1028,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "clr-namespace|x:Class|StartupUri",
+              "path": "desktop/OrionTV.Desktop.App"
+            },
+            "result_chars": 3227,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "local:|app:",
+              "path": "desktop/OrionTV.Desktop.App"
+            },
+            "result_chars": 230,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/App.xaml.cs",
+              "start_line": 1
+            },
+            "result_chars": 300,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(AiSourceWatcher|DesktopUpdateService|DesktopUpdateInfo|HlsAesDecryptMerger|ImageLoader|LiveChannelViewModel|LocalCachePlayback\\w*|OsdController|PlayerKeyboardHook|VodCacheLookup|VodCacheService|VodCacheSession|VodCacheEntry|VodCacheProgress|VodCacheLog|VodDownload\\w*|VodPlayableSource\\w*|VodSourceHealth\\w*|VodSourceProbe\\w*|LibVlcMediaDecodeProbe|IMediaDecodeProbe|MediaDecodeProbe\\w*|InlineProgress|VodProbeSample|AiCliLauncher|AiCliTool|CacheFile)\\b",
+              "path": "desktop/OrionTV.Desktop.App"
+            },
+            "result_chars": 40099,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "^(public |internal )(sealed |static |abstract |partial )*(class|record|enum|interface|struct) \\w+",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 7971,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(DeepgramSttProtocol|DoubaoAstProtocol|GeminiLiveTranslateProtocol|RealtimeTranslation\\w*|Pcm16TranslationFrameBuffer|RollingSubtitleBuffer)\\b",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 3828,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "Desktop\\w+|Settings|VideoSource|SearchResult",
+              "path": "desktop/OrionTV.Desktop.Core/GeminiLiveTranslateProtocol.cs"
+            },
+            "result_chars": 10,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "Desktop\\w+|Settings|VideoSource|SearchResult|LiveChannel",
+              "path": "desktop/OrionTV.Desktop.Core/DoubaoAstProtocol.cs"
+            },
+            "result_chars": 10,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "Desktop\\w+|Settings|VideoSource|SearchResult|LiveChannel",
+              "path": "desktop/OrionTV.Desktop.Core/DeepgramSttProtocol.cs"
+            },
+            "result_chars": 10,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "Desktop\\w+|Settings|VideoSource|SearchResult|LiveChannel|^using",
+              "path": "desktop/OrionTV.Desktop.Core/RealtimeTranslationProtocol.cs"
+            },
+            "result_chars": 167,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(ChannelHealth\\w*|MediaProbeStatus|DesktopLiveSource\\w*|ConfiguredLiveSource|M3uParser|LiveChannel)\\b",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 13919,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(VideoSource|SearchResult|LiveChannel|HlsAdSkip|Desktop\\w+|Playback\\w+|EpisodeLabelFormatter|AppleCms\\w*|VodSource\\w*)\\b",
+              "path": "desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs"
+            },
+            "result_chars": 295,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(PlaybackResumePolicy|PlaybackFallbackSelector|PlaybackMediaOptions|PlaybackStartupWatchdog|PlaybackStartupSignal|PlaybackStartupPolicy|HlsAdSkip|AdRange)\\b",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 2516,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/CatalogModels.cs",
+              "start_line": 1
+            },
+            "result_chars": 15430,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(LocalMedia\\w*|NaturalPathComparer)\\b",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 3614,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(Catalog\\w+|HomeCategory\\w*|DoubanClient|DoubanItem|VideoSourceCategory|CategoryVideosResponse)\\b",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 13467,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "^using|^namespace|^(public |internal )?(sealed |static |file )*(class|record) ",
+              "path": "desktop/OrionTV.Desktop.Tests"
+            },
+            "result_chars": 9185,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "new (StubHandler|RecordingHandler|FlvResponseHandler|HtmlResponseHandler|MisleadingHtmlResponseHandler|EncryptedHlsHandler|HtmlSegmentHandler|VariantRecordingHandler|StubHttpMessageHandler|InlineProgress|BlockingFirstProgress|FakeHlsServer|StubDecodeProbe|TestStringStore)\\b",
+              "path": "desktop/OrionTV.Desktop.Tests"
+            },
+            "result_chars": 4798,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "[^.\\w]App\\.|typeof\\(App|Core\\.",
+              "path": "desktop/OrionTV.Desktop.Tests"
+            },
+            "result_chars": 149,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs",
+              "start_line": 1
+            },
+            "result_chars": 6690,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "VideoCardControl|PageHeader",
+              "path": "desktop/OrionTV.Desktop.App/Controls"
+            },
+            "result_chars": 2047,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/AiSourceWatcher.cs",
+              "start_line": 1
+            },
+            "result_chars": 4618,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(AppleCms\\w*|IVodSourceClient|VodSourceClientFactory|UnsupportedVodSourceClient|MacCms\\w*|HomeCategoryMatcher|SearchResultSources|VideoSourceProtocols|EpisodeLabelFormatter)\\b",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 15185,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "\\b(JsonDictionaryStore|FavoriteStore|PlayRecordStore|PlayRecordHistoryEntry|DoubanClient|CatalogService|CatalogItem|ChannelHealthProbe)\\b",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 3349,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "WindowMessage|KbdLlHookStruct|class |enum |struct ",
+              "path": "desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs"
+            },
+            "result_chars": 333,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/OsdController.cs",
+              "start_line": 1
+            },
+            "result_chars": 3005,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "WindowMessage",
+              "path": "desktop"
+            },
+            "result_chars": 644,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/AiCliLauncher.cs",
+              "old_text": "namespace OrionTV.Desktop.App;",
+              "new_text": "namespace OrionTV.Desktop.App.AiImport;"
+            },
+            "result_chars": 51,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/AiSourceWatcher.cs",
+              "old_text": "namespace OrionTV.Desktop.App;",
+              "new_text": "namespace OrionTV.Desktop.App.AiImport;"
+            },
+            "result_chars": 53,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/AppServices.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App;",
+              "new_text": "using OrionTV.Desktop.App.Caching;\nusing OrionTV.Desktop.App.Playback;\nusing OrionTV.Desktop.App.SourceHealth;\nusing OrionTV.Desktop.App.Updates;\nusing OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App.Hosting;"
+            },
+            "result_chars": 49,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "Now Navigation.cs: move INavigationAware/INavigationVisibilityAware into Views.",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Navigation.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App;",
+              "new_text": "using OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App.Hosting;"
+            },
+            "result_chars": 48,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Navigation.cs",
+              "old_text": "/// <summary>\u9875\u9762\u53ef\u9009\u5b9e\u73b0\uff1a\u5bfc\u822a\u5230\u8be5\u9875\u65f6\u63a5\u6536\u53c2\u6570\u3002</summary>\npublic interface INavigationAware\n{\n    void OnNavigatedTo(object? parameter);\n}\n\npublic interface INavigationVisibilityAware\n{\n    void OnShown();\n    void OnHidden();\n}\n\n",
+              "new_text": ""
+            },
+            "result_chars": 48,
+            "error": false
+          },
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/NavigationContracts.cs",
+              "content": "namespace OrionTV.Desktop.App.Views;\n\n/// <summary>\u9875\u9762\u53ef\u9009\u5b9e\u73b0\uff1a\u5bfc\u822a\u5230\u8be5\u9875\u65f6\u63a5\u6536\u53c2\u6570\u3002</summary>\npublic interface INavigationAware\n{\n    void OnNavigatedTo(object? parameter);\n}\n\npublic interface INavigationVisibilityAware\n{\n    void OnShown();\n    void OnHidden();\n}\n"
+            },
+            "result_chars": 62,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/DesktopUpdateService.cs",
+              "start_line": 1
+            },
+            "result_chars": 22087,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/DesktopUpdateService.cs",
+              "old_text": "namespace OrionTV.Desktop.App;",
+              "new_text": "namespace OrionTV.Desktop.App.Updates;"
+            },
+            "result_chars": 58,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/ImageLoader.cs",
+              "start_line": 1
+            },
+            "result_chars": 5208,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Controls/ImageLoader.cs",
+              "content": "using System.Collections.Concurrent;\nusing System.IO;\nusing System.Net.Http;\nusing System.Windows;\nusing System.Windows.Controls;\nusing System.Windows.Media.Imaging;\n\nnamespace OrionTV.Desktop.App.Controls;\n\n/// <summary>\n/// Image \u7684\u9644\u52a0\u5c5e\u6027 ImageLoader.SourceUrl\uff1a\u5f02\u6b65\u4e0b\u8f7d\u8fdc\u7a0b\u56fe\u7247\u5e76\u8bbe\u4e3a Source\u3002\n/// \u8c46\u74e3\u56fe\u7247\u57df\u540d\u81ea\u52a8\u9644\u52a0 Referer\uff08\u5bf9\u9f50\u5b89\u5353 getImageSource \u7684 header \u5904\u7406\uff09\u3002\n/// </summary>\npublic static class ImageLoader\n{\n    private static readonly HttpClient Http = CreateClient();\n    private static readonly ConcurrentDictionary<string, BitmapSource> Cache = new();\n\n    public static readonly DependencyProperty SourceUrlProperty =\n        DependencyProperty.RegisterAttached(\n            \"SourceUrl\",\n            typeof(string),\n            typeof(ImageLoader),\n            new PropertyMetadata(null, OnSourceUrlChanged));\n\n    public static void SetSourceUrl(DependencyObject element, string? value) => element.SetValue(SourceUrlProperty, value);\n\n    public static string? GetSourceUrl(DependencyObject element) => (string?)element.GetValue(SourceUrlProperty);\n\n    private static HttpClient CreateClient()\n    {\n        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };\n        client.DefaultRequestHeaders.TryAddWithoutValidation(\"User-Agent\", \"Mozilla/5.0\");\n        return client;\n    }\n\n    private static async void OnSourceUrlChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)\n    {\n        if (d is not Image image)\n        {\n            return;\n        }\n\n        image.Source = null;\n        var url = e.NewValue as string;\n        if (string.IsNullOrWhiteSpace(url))\n        {\n            return;\n        }\n\n        if (Cache.TryGetValue(url, out var cached))\n        {\n            image.Source = cached;\n            return;\n        }\n\n        try\n        {\n            var bitmap = await LoadAsync(url).ConfigureAwait(true);\n            if (bitmap is not null && GetSourceUrl(image) == url)\n            {\n                // \u7b80\u5355\u5bb9\u91cf\u4e0a\u9650\uff0c\u907f\u514d\u957f\u65f6\u95f4\u6d4f\u89c8\u5bfc\u81f4\u7f13\u5b58\u65e0\u9650\u589e\u957f\u3002\n                if (Cache.Count > 500)\n                {\n                    Cache.Clear();\n                }\n\n                Cache[url] = bitmap;\n                image.Source = bitmap;\n            }\n        }\n        catch\n        {\n            // \u56fe\u7247\u52a0\u8f7d\u5931\u8d25\u65f6\u4fdd\u6301\u7a7a\u767d\u5360\u4f4d\u3002\n        }\n    }\n\n    private static async Task<BitmapSource?> LoadAsync(string url)\n    {\n        byte[] bytes;\n        if (TryGetLocalPath(url, out var localPath))\n        {\n            bytes = await File.ReadAllBytesAsync(localPath).ConfigureAwait(false);\n        }\n        else\n        {\n            var requestUrl = url.StartsWith(\"//\", StringComparison.Ordinal) ? \"https:\" + url : url;\n            using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);\n            if (requestUrl.Contains(\"doubanio.com\", StringComparison.OrdinalIgnoreCase))\n            {\n                request.Headers.TryAddWithoutValidation(\"Referer\", \"https://movie.douban.com/\");\n            }\n\n            using var response = await Http.SendAsync(request).ConfigureAwait(false);\n            if (!response.IsSuccessStatusCode)\n            {\n                return null;\n            }\n\n            bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);\n        }\n\n        return await Task.Run<BitmapSource?>(() =>\n        {\n            try\n            {\n                using var stream = new MemoryStream(bytes);\n                var frame = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);\n                frame.Freeze();\n                return frame;\n            }\n            catch\n            {\n                return null;\n            }\n        }).ConfigureAwait(false);\n    }\n\n    private static bool TryGetLocalPath(string value, out string path)\n    {\n        path = \"\";\n        try\n        {\n            if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.IsFile)\n            {\n                path = uri.LocalPath;\n                return File.Exists(path);\n            }\n\n            if (Path.IsPathFullyQualified(value) && File.Exists(value))\n            {\n                path = Path.GetFullPath(value);\n                return true;\n            }\n        }\n        catch\n        {\n        }\n\n        return false;\n    }\n}\n"
+            },
+            "result_chars": 57,
+            "error": false
+          },
+          {
+            "tool": "delete_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/ImageLoader.cs"
+            },
+            "result_chars": 50,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs",
+              "start_line": 1
+            },
+            "result_chars": 3666,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/LiveChannelViewModel.cs",
+              "content": "using System.ComponentModel;\nusing System.Runtime.CompilerServices;\nusing System.Windows.Media;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.StreamHealth;\n\nnamespace OrionTV.Desktop.App.Views;\n\n/// <summary>\n/// \u9891\u9053\u5217\u8868\u9879\u89c6\u56fe\u6a21\u578b\uff1a\u5305\u88f9\u4e0d\u53ef\u53d8\u7684 <see cref=\"LiveChannel\"/> \u8bb0\u5f55\uff0c\n/// \u989d\u5916\u627f\u8f7d\u53ef\u53d8\u7684\u6d4b\u901f\u72b6\u6001\uff08\u5fbd\u6807\u989c\u8272\u3001\u5ef6\u8fdf/\u901f\u7387\u6807\u7b7e\uff09\uff0c\u4f9b ListBox \u7684 ItemTemplate \u7ed1\u5b9a\u3002\n/// </summary>\npublic sealed class LiveChannelViewModel : INotifyPropertyChanged\n{\n    private static readonly Brush UnknownBrush = Frozen(\"#5A5F66\");\n    private static readonly Brush GoodBrush = Frozen(\"#00A862\");\n    private static readonly Brush FairBrush = Frozen(\"#E6A700\");\n    private static readonly Brush BadBrush = Frozen(\"#E5484D\");\n\n    private ChannelHealthResult _health = new(ChannelHealth.Unknown, 0, string.Empty);\n    private bool _isProbing;\n\n    public LiveChannelViewModel(string key, LiveChannel channel)\n    {\n        Key = key;\n        Channel = channel;\n    }\n\n    /// <summary>\u6279\u91cf\u63a2\u6d4b\u65f6\u7528\u4e8e\u56de\u586b\u7ed3\u679c\u7684\u7a33\u5b9a\u952e\uff08\u4e0e\u9891\u9053\u5728\u5217\u8868\u4e2d\u7684\u4f4d\u7f6e\u4e00\u4e00\u5bf9\u5e94\uff09\u3002</summary>\n    public string Key { get; }\n\n    public LiveChannel Channel { get; }\n\n    public string Name => Channel.Name;\n\n    public string Url => Channel.Url;\n\n    public ChannelHealthResult Health\n    {\n        get => _health;\n        set\n        {\n            _health = value;\n            IsProbing = false;\n            OnPropertyChanged(nameof(Health));\n            OnPropertyChanged(nameof(BadgeBrush));\n            OnPropertyChanged(nameof(MetricLabel));\n            OnPropertyChanged(nameof(DetailTooltip));\n            OnPropertyChanged(nameof(MetricTooltip));\n        }\n    }\n\n    /// <summary>\u8be5\u9891\u9053\u6b63\u5728\u63a2\u6d4b\u4e2d\uff08\u7528\u4e8e\u663e\u793a\u7b49\u5f85\u6001\uff09\u3002</summary>\n    public bool IsProbing\n    {\n        get => _isProbing;\n        set\n        {\n            if (_isProbing == value)\n            {\n                return;\n            }\n\n            _isProbing = value;\n            OnPropertyChanged(nameof(IsProbing));\n            OnPropertyChanged(nameof(BadgeBrush));\n            OnPropertyChanged(nameof(MetricLabel));\n            OnPropertyChanged(nameof(MetricTooltip));\n        }\n    }\n\n    public Brush BadgeBrush => _isProbing\n        ? UnknownBrush\n        : _health.Health switch\n        {\n            ChannelHealth.Good => GoodBrush,\n            ChannelHealth.Fair => FairBrush,\n            ChannelHealth.Bad => BadBrush,\n            _ => UnknownBrush,\n        };\n\n    public string? DetailTooltip => string.IsNullOrEmpty(_health.Detail) ? Name : $\"{Name} \u00b7 {_health.Detail}\";\n\n    public string MetricLabel => _isProbing ? \"\u6d4b\u901f\u4e2d\" : ChannelHealthDisplay.MetricsLabelOf(_health);\n\n    public string MetricTooltip => $\"{Name} \u00b7 {ChannelHealthDisplay.MetricsLabelOf(_health)}\";\n\n    public event PropertyChangedEventHandler? PropertyChanged;\n\n    private void OnPropertyChanged([CallerMemberName] string? name = null) =>\n        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));\n\n    private static Brush Frozen(string hex)\n    {\n        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));\n        brush.Freeze();\n        return brush;\n    }\n}\n"
+            },
+            "result_chars": 63,
+            "error": false
+          },
+          {
+            "tool": "delete_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs"
+            },
+            "result_chars": 59,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "Now OsdController \u2192 Views folder.",
+        "calls": [
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/OsdController.cs",
+              "content": "using System.Windows;\nusing System.Windows.Input;\nusing System.Windows.Media.Animation;\nusing System.Windows.Threading;\n\nnamespace OrionTV.Desktop.App.Views;\n\n/// <summary>\n/// \u64ad\u653e\u5668 OSD \u81ea\u52a8\u9690\u85cf\uff1a\u9f20\u6807\u79fb\u52a8\u65f6\u663e\u793a\u63a7\u5236\u5c42\u5e76\u91cd\u7f6e\u8ba1\u65f6\uff0c\u9759\u6b62\u6570\u79d2\u540e\u6de1\u51fa\u5e76\u9690\u85cf\u5149\u6807\uff1b\n/// \u901a\u8fc7 <see cref=\"Pin\"/> \u5728\u4fa7\u680f/\u9891\u9053\u5217\u8868\u5c55\u5f00\u6216\u9f20\u6807\u60ac\u505c\u63a7\u5236\u680f\u65f6\u9501\u5b9a\u663e\u793a\u3002\n/// </summary>\npublic sealed class OsdController\n{\n    private static readonly Duration FadeDuration = new(TimeSpan.FromMilliseconds(180));\n\n    private readonly FrameworkElement _host;\n    private readonly UIElement[] _layers;\n    private readonly DispatcherTimer _timer;\n    private bool _pinned;\n    private bool _visible = true;\n\n    public OsdController(FrameworkElement host, params UIElement[] layers)\n    {\n        _host = host;\n        _layers = layers;\n        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };\n        _timer.Tick += (_, _) =>\n        {\n            _timer.Stop();\n            if (!_pinned)\n            {\n                Hide();\n            }\n        };\n\n        _host.MouseMove += (_, _) => Show();\n        _host.MouseLeave += (_, _) =>\n        {\n            if (!_pinned)\n            {\n                Hide();\n            }\n        };\n    }\n\n    /// <summary>\u9501\u5b9a/\u89e3\u9501\u663e\u793a\uff08\u5982\u4fa7\u680f\u6253\u5f00\u3001\u9f20\u6807\u60ac\u505c\u63a7\u5236\u680f\u65f6\u9501\u5b9a\uff09\u3002</summary>\n    public void Pin(bool pinned)\n    {\n        _pinned = pinned;\n        if (pinned)\n        {\n            Show();\n        }\n        else\n        {\n            RestartTimer();\n        }\n    }\n\n    public void Show()\n    {\n        if (!_visible)\n        {\n            _visible = true;\n            foreach (var layer in _layers)\n            {\n                Fade(layer, 1);\n            }\n        }\n\n        _host.Cursor = Cursors.Arrow;\n        RestartTimer();\n    }\n\n    public void Hide()\n    {\n        if (!_visible)\n        {\n            return;\n        }\n\n        _visible = false;\n        foreach (var layer in _layers)\n        {\n            Fade(layer, 0);\n        }\n\n        _host.Cursor = Cursors.None;\n    }\n\n    private void RestartTimer()\n    {\n        _timer.Stop();\n        if (!_pinned)\n        {\n            _timer.Start();\n        }\n    }\n\n    private static void Fade(UIElement layer, double to)\n    {\n        layer.IsHitTestVisible = to > 0;\n        layer.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(to, FadeDuration));\n    }\n}\n"
+            },
+            "result_chars": 56,
+            "error": false
+          },
+          {
+            "tool": "delete_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/OsdController.cs"
+            },
+            "result_chars": 52,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs",
+              "start_line": 1
+            },
+            "result_chars": 5898,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/PlayerKeyboardHook.cs",
+              "content": "using System.Runtime.InteropServices;\nusing System.Windows;\nusing System.Windows.Input;\nusing System.Windows.Interop;\n\nnamespace OrionTV.Desktop.App.Views;\n\n/// <summary>\n/// Captures player shortcuts even when keyboard focus belongs to an embedded native video HWND\n/// (LibVLC or the out-of-process mpv child window).\n/// </summary>\ninternal sealed class PlayerKeyboardHook : IDisposable\n{\n    private const int WhKeyboardLl = 13;\n    private const int WmKeyDown = 0x0100;\n    private const int GaRoot = 2;\n    private const int GaRootOwner = 3;\n    private const int VkShift = 0x10;\n    private const int VkControl = 0x11;\n    private const int VkMenu = 0x12;\n    private const int VkLWin = 0x5B;\n    private const int VkRWin = 0x5C;\n\n    private readonly IntPtr _ownerHandle;\n    private readonly Func<Key, ModifierKeys, bool> _handler;\n    private readonly HookProc _hookProc;\n    private IntPtr _hookHandle;\n\n    private PlayerKeyboardHook(IntPtr ownerHandle, Func<Key, ModifierKeys, bool> handler)\n    {\n        _ownerHandle = ownerHandle;\n        _handler = handler;\n        _hookProc = HookCallback;\n        _hookHandle = SetWindowsHookEx(WhKeyboardLl, _hookProc, GetModuleHandle(null), 0);\n    }\n\n    internal static PlayerKeyboardHook? TryCreate(\n        Window owner,\n        Func<Key, ModifierKeys, bool> handler)\n    {\n        var ownerHandle = new WindowInteropHelper(owner).EnsureHandle();\n        if (ownerHandle == IntPtr.Zero)\n        {\n            return null;\n        }\n\n        var hook = new PlayerKeyboardHook(ownerHandle, handler);\n        if (hook._hookHandle != IntPtr.Zero)\n        {\n            return hook;\n        }\n\n        hook.Dispose();\n        return null;\n    }\n\n    private IntPtr HookCallback(int code, IntPtr message, IntPtr data)\n    {\n        if (code >= 0\n            && message.ToInt32() == WmKeyDown\n            && IsOwnerForeground())\n        {\n            var keyboard = Marshal.PtrToStructure<KbdLlHookStruct>(data);\n            var key = KeyInterop.KeyFromVirtualKey((int)keyboard.VirtualKey);\n            try\n            {\n                if (_handler(key, ReadModifiers()))\n                {\n                    return new IntPtr(1);\n                }\n            }\n            catch\n            {\n                // A shortcut failure must never break the process-wide keyboard hook chain.\n            }\n        }\n\n        return CallNextHookEx(_hookHandle, code, message, data);\n    }\n\n    private bool IsOwnerForeground()\n    {\n        var foreground = GetForegroundWindow();\n        if (foreground == IntPtr.Zero)\n        {\n            return false;\n        }\n\n        return GetAncestor(foreground, GaRoot) == _ownerHandle\n            || GetAncestor(foreground, GaRootOwner) == _ownerHandle;\n    }\n\n    private static ModifierKeys ReadModifiers()\n    {\n        var modifiers = ModifierKeys.None;\n        if (IsKeyDown(VkShift)) modifiers |= ModifierKeys.Shift;\n        if (IsKeyDown(VkControl)) modifiers |= ModifierKeys.Control;\n        if (IsKeyDown(VkMenu)) modifiers |= ModifierKeys.Alt;\n        if (IsKeyDown(VkLWin) || IsKeyDown(VkRWin)) modifiers |= ModifierKeys.Windows;\n        return modifiers;\n    }\n\n    private static bool IsKeyDown(int virtualKey) => (GetAsyncKeyState(virtualKey) & 0x8000) != 0;\n\n    public void Dispose()\n    {\n        var handle = Interlocked.Exchange(ref _hookHandle, IntPtr.Zero);\n        if (handle != IntPtr.Zero)\n        {\n            _ = UnhookWindowsHookEx(handle);\n        }\n    }\n\n    [StructLayout(LayoutKind.Sequential)]\n    private readonly struct KbdLlHookStruct\n    {\n        internal readonly uint VirtualKey;\n        internal readonly uint ScanCode;\n        internal readonly uint Flags;\n        internal readonly uint Time;\n        internal readonly UIntPtr ExtraInfo;\n    }\n\n    private delegate IntPtr HookProc(int code, IntPtr message, IntPtr data);\n\n    [DllImport(\"user32.dll\", SetLastError = true)]\n    private static extern IntPtr SetWindowsHookEx(\n        int hookId,\n        HookProc hookProc,\n        IntPtr moduleHandle,\n        uint threadId);\n\n    [DllImport(\"user32.dll\", SetLastError = true)]\n    [return: MarshalAs(UnmanagedType.Bool)]\n    private static extern bool UnhookWindowsHookEx(IntPtr hookHandle);\n\n    [DllImport(\"user32.dll\")]\n    private static extern IntPtr CallNextHookEx(\n        IntPtr hookHandle,\n        int code,\n        IntPtr message,\n        IntPtr data);\n\n    [DllImport(\"user32.dll\")]\n    private static extern IntPtr GetForegroundWindow();\n\n    [DllImport(\"user32.dll\")]\n    private static extern IntPtr GetAncestor(IntPtr window, int flags);\n\n    [DllImport(\"user32.dll\")]\n    private static extern short GetAsyncKeyState(int virtualKey);\n\n    [DllImport(\"kernel32.dll\", CharSet = CharSet.Unicode)]\n    private static extern IntPtr GetModuleHandle(string? moduleName);\n}\n"
+            },
+            "result_chars": 61,
+            "error": false
+          },
+          {
+            "tool": "delete_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs"
+            },
+            "result_chars": 57,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/PlaybackController.cs",
+              "old_text": "namespace OrionTV.Desktop.App;",
+              "new_text": "namespace OrionTV.Desktop.App.Playback;"
+            },
+            "result_chars": 56,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs",
+              "start_line": 1
+            },
+            "result_chars": 20417,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs",
+              "old_text": "using System.Windows.Threading;\n\nnamespace OrionTV.Desktop.App.LocalPlayback;",
+              "new_text": "using System.Windows.Threading;\nusing OrionTV.Desktop.App.Playback;\n\nnamespace OrionTV.Desktop.App.LocalPlayback;"
+            },
+            "result_chars": 66,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/EmptyStringToVisibilityConverter.cs",
+              "start_line": 1
+            },
+            "result_chars": 682,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+              "start_line": 1
+            },
+            "result_chars": 22004,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodCacheService.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App;",
+              "new_text": "using OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App.Caching;"
+            },
+            "result_chars": 53,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs",
+              "start_line": 1
+            },
+            "result_chars": 14181,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs",
+              "old_text": "namespace OrionTV.Desktop.App;",
+              "new_text": "namespace OrionTV.Desktop.App.Caching;"
+            },
+            "result_chars": 57,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+              "start_line": 1
+            },
+            "result_chars": 12639,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodDownloadManager.cs",
+              "old_text": "namespace OrionTV.Desktop.App;",
+              "new_text": "namespace OrionTV.Desktop.App.Caching;"
+            },
+            "result_chars": 56,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodCacheLookup.cs",
+              "start_line": 1
+            },
+            "result_chars": 1882,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs",
+              "start_line": 1
+            },
+            "result_chars": 8078,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/CacheCatalog/VodCacheLookup.cs",
+              "content": "using OrionTV.Desktop.App.Caching;\n\nnamespace OrionTV.Desktop.App.CacheCatalog;\n\ninternal sealed class VodCacheLookup\n{\n    private readonly IReadOnlyDictionary<string, IReadOnlyList<VodCacheEntry>> _entriesByTitle;\n\n    private VodCacheLookup(IReadOnlyDictionary<string, IReadOnlyList<VodCacheEntry>> entriesByTitle)\n    {\n        _entriesByTitle = entriesByTitle;\n    }\n\n    public static VodCacheLookup Empty { get; } = new(\n        new Dictionary<string, IReadOnlyList<VodCacheEntry>>(StringComparer.OrdinalIgnoreCase));\n\n    public static VodCacheLookup FromEntries(IEnumerable<VodCacheEntry> entries)\n    {\n        var byTitle = entries\n            .Where(entry => entry.IsComplete && !string.IsNullOrWhiteSpace(entry.PlaylistPath))\n            .GroupBy(entry => entry.Title.Trim(), StringComparer.OrdinalIgnoreCase)\n            .ToDictionary(\n                group => group.Key,\n                group => (IReadOnlyList<VodCacheEntry>)group\n                    .OrderByDescending(entry => entry.CreatedAt)\n                    .ToList(),\n                StringComparer.OrdinalIgnoreCase);\n        return new VodCacheLookup(byTitle);\n    }\n\n    public VodCacheEntry? FindCompleted(string title, string sourceUrl)\n    {\n        if (string.IsNullOrWhiteSpace(title)\n            || !_entriesByTitle.TryGetValue(title.Trim(), out var entries))\n        {\n            return null;\n        }\n\n        return entries.FirstOrDefault(entry =>\n                !string.IsNullOrWhiteSpace(sourceUrl)\n                && string.Equals(entry.SourceUrl, sourceUrl, StringComparison.OrdinalIgnoreCase))\n            ?? entries.FirstOrDefault();\n    }\n}\n"
+            },
+            "result_chars": 64,
+            "error": false
+          },
+          {
+            "tool": "delete_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodCacheLookup.cs"
+            },
+            "result_chars": 53,
+            "error": false
+          },
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/CacheCatalog/LocalCachePlaybackCatalog.cs",
+              "content": "using System.IO;\nusing System.Security.Cryptography;\nusing System.Text;\nusing OrionTV.Desktop.App.Caching;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Library;\n\nnamespace OrionTV.Desktop.App.CacheCatalog;\n\ninternal sealed record LocalCachePlaybackGroup(\n    string Id,\n    string Title,\n    string Poster,\n    IReadOnlyList<string> Episodes,\n    IReadOnlyList<string> EpisodeLabels,\n    IReadOnlyDictionary<string, int> EntryIndexes,\n    DateTimeOffset SortTime)\n{\n    internal int FindEpisodeIndexByDirectory(string directory) =>\n        EntryIndexes.TryGetValue(directory, out var index) ? index : -1;\n\n    internal int FindEpisodeIndexByPath(string path)\n    {\n        var episode = LocalCachePlaybackCatalog.NormalizePlayableUri(path);\n        return string.IsNullOrWhiteSpace(episode)\n            ? -1\n            : Episodes.ToList().FindIndex(candidate =>\n                string.Equals(candidate, episode, StringComparison.OrdinalIgnoreCase));\n    }\n}\n\ninternal sealed record LocalCachePlaybackSelection(\n    LocalCachePlaybackGroup Group,\n    int EpisodeIndex)\n{\n    internal PlayParameter ToPlayParameter()\n    {\n        var source = new SearchResult(\n            Group.Id,\n            Group.Title,\n            Group.Poster,\n            Group.Episodes,\n            \"local\",\n            \"\u672c\u5730\",\n            \"\",\n            EpisodeLabels: Group.EpisodeLabels);\n        return new PlayParameter(\n            Group.Title,\n            \"local\",\n            \"\u672c\u5730\",\n            Group.Id,\n            Group.Episodes,\n            Math.Clamp(EpisodeIndex, 0, Group.Episodes.Count - 1),\n            0,\n            [source],\n            Group.Poster,\n            EpisodeLabels: Group.EpisodeLabels);\n    }\n}\n\ninternal static class LocalCachePlaybackCatalog\n{\n    internal static IReadOnlyList<LocalCachePlaybackGroup> Build(IEnumerable<VodCacheEntry> entries)\n    {\n        var parsed = entries\n            .Select(entry => new ParsedEntry(\n                entry,\n                LocalMediaNaming.Parse(entry.Title),\n                NormalizePlayableUri(entry.PlaylistPath)))\n            .Where(item => !string.IsNullOrWhiteSpace(item.Uri))\n            .ToList();\n\n        return parsed\n            .GroupBy(item =>\n                item.Name.EpisodeNumber is not null\n                    ? $\"series:{LocalMediaNaming.NormalizeTitle(item.Name.Title)}\"\n                    : $\"cache:{item.Entry.Directory}\",\n                StringComparer.OrdinalIgnoreCase)\n            .Select(group => BuildGroup(group.Key, group))\n            .OrderByDescending(group => group.SortTime)\n            .ToList();\n    }\n\n    internal static LocalCachePlaybackSelection? FindByDirectory(\n        IEnumerable<LocalCachePlaybackGroup> groups,\n        string directory)\n    {\n        foreach (var group in groups)\n        {\n            var index = group.FindEpisodeIndexByDirectory(directory);\n            if (index >= 0)\n            {\n                return new LocalCachePlaybackSelection(group, index);\n            }\n        }\n\n        return null;\n    }\n\n    internal static LocalCachePlaybackSelection? FindByEpisodePath(\n        IEnumerable<LocalCachePlaybackGroup> groups,\n        IEnumerable<string> paths)\n    {\n        foreach (var path in paths)\n        {\n            foreach (var group in groups)\n            {\n                var index = group.FindEpisodeIndexByPath(path);\n                if (index >= 0)\n                {\n                    return new LocalCachePlaybackSelection(group, index);\n                }\n            }\n        }\n\n        return null;\n    }\n\n    internal static LocalCachePlaybackGroup? FindByTitle(\n        IEnumerable<LocalCachePlaybackGroup> groups,\n        string title)\n    {\n        var parsedTitle = LocalMediaNaming.Parse(title).Title;\n        var normalizedTitle = LocalMediaNaming.NormalizeTitle(parsedTitle);\n        return groups.FirstOrDefault(group =>\n            LocalMediaNaming.NormalizeTitle(group.Title) == normalizedTitle);\n    }\n\n    internal static string NormalizePlayableUri(string path)\n    {\n        if (string.IsNullOrWhiteSpace(path))\n        {\n            return \"\";\n        }\n\n        try\n        {\n            if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && uri.IsFile)\n            {\n                return File.Exists(uri.LocalPath) ? uri.AbsoluteUri : \"\";\n            }\n\n            var fullPath = Path.GetFullPath(path);\n            return File.Exists(fullPath) ? new Uri(fullPath).AbsoluteUri : \"\";\n        }\n        catch\n        {\n            return \"\";\n        }\n    }\n\n    private static LocalCachePlaybackGroup BuildGroup(\n        string key,\n        IEnumerable<ParsedEntry> entries)\n    {\n        var buckets = entries\n            .GroupBy(item =>\n                item.Name.EpisodeNumber?.ToString()\n                ?? item.Entry.Directory,\n                StringComparer.OrdinalIgnoreCase)\n            .Select(items =>\n            {\n                var all = items.ToList();\n                return new EpisodeBucket(\n                    all.OrderByDescending(item => item.Entry.CreatedAt).First(),\n                    all);\n            })\n            .OrderBy(bucket => bucket.Selected.Name.EpisodeNumber ?? int.MaxValue)\n            .ThenBy(bucket => bucket.Selected.Entry.CreatedAt)\n            .ToList();\n        var selected = buckets.Select(bucket => bucket.Selected).ToList();\n        var entryIndexes = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);\n        for (var index = 0; index < buckets.Count; index++)\n        {\n            foreach (var item in buckets[index].Entries)\n            {\n                entryIndexes[item.Entry.Directory] = index;\n            }\n        }\n\n        var title = selected[0].Name.Title;\n        var poster = selected\n            .Select(item => item.Entry.Poster)\n            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))\n            ?? \"\";\n\n        return new LocalCachePlaybackGroup(\n            StableCacheId(key),\n            title,\n            poster,\n            selected.Select(item => item.Uri).ToList(),\n            selected.Select(item => item.Name.EpisodeNumber is { } number ? $\"\u7b2c{number}\u96c6\" : \"\").ToList(),\n            entryIndexes,\n            selected.Max(item => item.Entry.CreatedAt));\n    }\n\n    private static string StableCacheId(string value)\n    {\n        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(value));\n        return \"cache-\" + Convert.ToHexString(hash)[..16].ToLowerInvariant();\n    }\n\n    private sealed record ParsedEntry(\n        VodCacheEntry Entry,\n        LocalMediaName Name,\n        string Uri);\n\n    private sealed record EpisodeBucket(\n        ParsedEntry Selected,\n        IReadOnlyList<ParsedEntry> Entries);\n}\n"
+            },
+            "result_chars": 75,
+            "error": false
+          },
+          {
+            "tool": "delete_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs"
+            },
+            "result_chars": 64,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs",
+              "start_line": 1
+            },
+            "result_chars": 19824,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App;",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.StreamHealth;\n\nnamespace OrionTV.Desktop.App.SourceHealth;"
+            },
+            "result_chars": 58,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs",
+              "start_line": 1
+            },
+            "result_chars": 9944,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.App;",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\n\nnamespace OrionTV.Desktop.App.SourceHealth;"
+            },
+            "result_chars": 63,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/MainWindow.xaml.cs",
+              "old_text": "using OrionTV.Desktop.App.Views;",
+              "new_text": "using OrionTV.Desktop.App.AiImport;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.App.Views;"
+            },
+            "result_chars": 53,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "^using",
+              "path": "desktop/OrionTV.Desktop.App/Views"
+            },
+            "result_chars": 5775,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/CatalogService.cs",
+              "start_line": 1
+            },
+            "result_chars": 15178,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/CatalogService.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;\n\n/// <summary>\u9996\u9875/\u641c\u7d22/\u6536\u85cf/\u5386\u53f2\u7f51\u683c\u7edf\u4e00\u5c55\u793a\u9879\u3002</summary>",
+              "new_text": "using OrionTV.Desktop.Core.VodSources;\n\nnamespace OrionTV.Desktop.Core.Catalog;\n\n/// <summary>\u9996\u9875/\u641c\u7d22/\u6536\u85cf/\u5386\u53f2\u7f51\u683c\u7edf\u4e00\u5c55\u793a\u9879\u3002</summary>"
+            },
+            "result_chars": 53,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/DoubanClient.cs",
+              "start_line": 1
+            },
+            "result_chars": 9758,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/DoubanClient.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;\n\n/// <summary>\n/// \u79fb\u690d\u81ea\u5b89\u5353",
+              "new_text": "namespace OrionTV.Desktop.Core.Catalog;\n\n/// <summary>\u8c46\u74e3\u6761\u76ee\uff08\u9996\u9875\u5206\u7c7b\u7f51\u683c\u6570\u636e\uff09\u3002</summary>\npublic sealed record DoubanItem(\n    string Id,\n    string Title,\n    string Poster,\n    string? Rate = null,\n    string? Year = null);\n\n/// <summary>\n/// \u79fb\u690d\u81ea\u5b89\u5353"
+            },
+            "result_chars": 51,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "Now rewrite CatalogModels.cs and create Catalog/CatalogPlayability.cs.",
+        "calls": [
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/Catalog/CatalogPlayability.cs",
+              "content": "namespace OrionTV.Desktop.Core.Catalog;\n\npublic enum CatalogPlayabilityStatus\n{\n    Unknown,\n    Checking,\n    Available,\n    Playable,\n    Unavailable,\n}\n\npublic sealed record CatalogPlayability(\n    CatalogPlayabilityStatus Status,\n    int PlayableSourceCount,\n    IReadOnlyList<SearchResult>? CandidateSources = null)\n{\n    /// <summary>\n    /// \u6d77\u62a5\u4f7f\u7528\u7684\u5019\u9009\u7ebf\u8def\u8ba1\u6570\uff0c\u4e0d\u6267\u884c HTTP \u5a92\u4f53\u6821\u9a8c\u6216\u64ad\u653e\u5668\u89e3\u7801\uff1a\n    /// - \u6807\u9898\u7528 <see cref=\"CatalogTitleMatcher\"/>\uff08\u4e0e GetDetailSourcesAsync \u4e00\u81f4\uff09\n    /// - \u53bb\u91cd\u7528 SelectionKey\uff08source+id+\u7ebf\u8def\uff09\uff0c\u4e0e\u8be6\u60c5 chip \u4e00\u81f4\n    /// - \u4fdd\u7559\u65e0\u5267\u96c6\u6761\u76ee\uff08TVBox search \u5e38\u65e0 play_url\uff0c\u8be6\u60c5\u9875\u518d\u8865\u62c9\uff09\n    /// \u5339\u914d\u5230\u4efb\u610f\u7ebf\u8def\u5373 Available\uff1b\u8fdb\u5165\u8be6\u60c5\u540e\u518d\u4ece\u8fd9\u4e9b\u5019\u9009\u4e2d\u7b5b\u9009\u771f\u6b63\u53ef\u64ad\u7ebf\u8def\u3002\n    /// </summary>\n    public static CatalogPlayability FromDetailSources(string title, IEnumerable<SearchResult> results)\n    {\n        var candidates = results\n            .SelectMany(SearchResultSources.Expand)\n            .Where(item => CatalogTitleMatcher.Matches(item.Title, title))\n            .GroupBy(SearchResultSources.SelectionKeyOf, StringComparer.Ordinal)\n            .Select(items => items.First())\n            .ToList();\n\n        return new CatalogPlayability(\n            candidates.Count > 0 ? CatalogPlayabilityStatus.Available : CatalogPlayabilityStatus.Unavailable,\n            candidates.Count,\n            candidates);\n    }\n\n    public CatalogItem ApplyTo(CatalogItem item) => item with\n    {\n        PlayabilityStatus = Status,\n        PlayableSourceCount = PlayableSourceCount,\n        CandidateSources = CandidateSources,\n        PlayableSources = null,\n    };\n}\n\npublic static class CatalogPlayabilityBadge\n{\n    public static string? GetLabel(CatalogPlayabilityStatus status, int? playableSourceCount) =>\n        status switch\n        {\n            CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Playable\n                when playableSourceCount.GetValueOrDefault() > 0 =>\n                $\"{playableSourceCount.GetValueOrDefault()}\\u6e90\",\n            CatalogPlayabilityStatus.Available => \"0\\u6e90\",\n            CatalogPlayabilityStatus.Playable => \"\\u53ef\\u64ad\",\n            CatalogPlayabilityStatus.Unavailable => \"\\u6682\\u65e0\\u8d44\\u6e90\",\n            CatalogPlayabilityStatus.Checking => \"\\u68c0\\u6d4b\\u4e2d\",\n            _ => null,\n        };\n}\n\n/// <summary>\n/// \u5f53\u524d\u5e94\u7528\u4f1a\u8bdd\u5185\u7684\u9996\u9875\u5019\u9009\u7ebf\u8def\u8ba1\u6570\u4e0e\u5feb\u7167\u7f13\u5b58\u3002\n/// \u9996\u9875\u89c6\u56fe\u4f1a\u5728\u5207\u6362\u9876\u5c42\u9875\u9762\u65f6\u9500\u6bc1\uff0c\u7ed3\u679c\u4e0d\u80fd\u53ea\u653e\u5728\u5361\u7247\u5bf9\u8c61\u91cc\u3002\n/// </summary>\npublic sealed class CatalogPlayabilityCache\n{\n    private readonly object _sync = new();\n    private readonly Dictionary<string, CatalogPlayability> _entries = new(StringComparer.Ordinal);\n    private int _generation;\n\n    public int Generation\n    {\n        get\n        {\n            lock (_sync)\n            {\n                return _generation;\n            }\n        }\n    }\n\n    public bool TryGet(CatalogItem item, out CatalogPlayability playability)\n    {\n        lock (_sync)\n        {\n            if (_entries.TryGetValue(GetKey(item), out var cached))\n            {\n                playability = cached;\n                return true;\n            }\n        }\n\n        playability = default!;\n        return false;\n    }\n\n    public bool Store(CatalogItem item, CatalogPlayability playability, int generation)\n    {\n        if (playability.Status is not (CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Unavailable))\n        {\n            return false;\n        }\n\n        lock (_sync)\n        {\n            if (generation != _generation)\n            {\n                return false;\n            }\n\n            _entries[GetKey(item)] = playability;\n            return true;\n        }\n    }\n\n    public void Invalidate()\n    {\n        lock (_sync)\n        {\n            _entries.Clear();\n            unchecked\n            {\n                _generation++;\n            }\n        }\n    }\n\n    private static string GetKey(CatalogItem item)\n    {\n        var source = item.Source.Trim().ToLowerInvariant();\n        if (!string.IsNullOrWhiteSpace(item.Id))\n        {\n            return $\"{source}:id:{item.Id.Trim()}\";\n        }\n\n        return $\"{source}:title:{CatalogTitleMatcher.Normalize(item.Title)}:year:{CatalogTitleMatcher.Normalize(item.Year)}\";\n    }\n}\n"
+            },
+            "result_chars": 64,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "Now remove those from CatalogModels.cs.",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/CatalogModels.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;\n\n/// <summary>\u8c46\u74e3\u6761\u76ee\uff08\u9996\u9875\u5206\u7c7b\u7f51\u683c\u6570\u636e\uff09\u3002</summary>\npublic sealed record DoubanItem(\n    string Id,\n    string Title,\n    string Poster,\n    string? Rate = null,\n    string? Year = null);\n\npublic enum CatalogPlayabilityStatus\n{\n    Unknown,\n    Checking,\n    Available,\n    Playable,\n    Unavailable,\n}\n\n/// <summary>\u8be6\u60c5/\u6d77\u62a5\u5171\u7528\u7684\u6807\u9898\u5339\u914d\uff08\u53bb\u7a7a\u767d\u3001\u5927\u5c0f\u5199\u5f52\u4e00\uff09\u3002</summary>",
+              "new_text": "namespace OrionTV.Desktop.Core;\n\n/// <summary>\u8be6\u60c5/\u6d77\u62a5\u5171\u7528\u7684\u6807\u9898\u5339\u914d\uff08\u53bb\u7a7a\u767d\u3001\u5927\u5c0f\u5199\u5f52\u4e00\uff09\u3002</summary>"
+            },
+            "result_chars": 52,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/CatalogModels.cs",
+              "start_line": 20
+            },
+            "result_chars": 14375,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "I'll remove lines 27\u2013156 (the moved catalog-playability types) with a precise edit.",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/CatalogModels.cs",
+              "old_text": "public sealed record CatalogPlayability(\n    CatalogPlayabilityStatus Status,\n    int PlayableSourceCount,\n    IReadOnlyList<SearchResult>? CandidateSources = null)\n{\n    /// <summary>\n    /// \u6d77\u62a5\u4f7f\u7528\u7684\u5019\u9009\u7ebf\u8def\u8ba1\u6570\uff0c\u4e0d\u6267\u884c HTTP \u5a92\u4f53\u6821\u9a8c\u6216\u64ad\u653e\u5668\u89e3\u7801\uff1a\n    /// - \u6807\u9898\u7528 <see cref=\"CatalogTitleMatcher\"/>\uff08\u4e0e GetDetailSourcesAsync \u4e00\u81f4\uff09\n    /// - \u53bb\u91cd\u7528 SelectionKey\uff08source+id+\u7ebf\u8def\uff09\uff0c\u4e0e\u8be6\u60c5 chip \u4e00\u81f4\n    /// - \u4fdd\u7559\u65e0\u5267\u96c6\u6761\u76ee\uff08TVBox search \u5e38\u65e0 play_url\uff0c\u8be6\u60c5\u9875\u518d\u8865\u62c9\uff09\n    /// \u5339\u914d\u5230\u4efb\u610f\u7ebf\u8def\u5373 Available\uff1b\u8fdb\u5165\u8be6\u60c5\u540e\u518d\u4ece\u8fd9\u4e9b\u5019\u9009\u4e2d\u7b5b\u9009\u771f\u6b63\u53ef\u64ad\u7ebf\u8def\u3002\n    /// </summary>\n    public static CatalogPlayability FromDetailSources(string title, IEnumerable<SearchResult> results)\n    {\n        var candidates = results\n            .SelectMany(SearchResultSources.Expand)\n            .Where(item => CatalogTitleMatcher.Matches(item.Title, title))\n            .GroupBy(SearchResultSources.SelectionKeyOf, StringComparer.Ordinal)\n            .Select(items => items.First())\n            .ToList();\n\n        return new CatalogPlayability(\n            candidates.Count > 0 ? CatalogPlayabilityStatus.Available : CatalogPlayabilityStatus.Unavailable,\n            candidates.Count,\n            candidates);\n    }\n\n    public CatalogItem ApplyTo(CatalogItem item) => item with\n    {\n        PlayabilityStatus = Status,\n        PlayableSourceCount = PlayableSourceCount,\n        CandidateSources = CandidateSources,\n        PlayableSources = null,\n    };\n}\n\npublic static class CatalogPlayabilityBadge\n{\n    public static string? GetLabel(CatalogPlayabilityStatus status, int? playableSourceCount) =>\n        status switch\n        {\n            CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Playable\n                when playableSourceCount.GetValueOrDefault() > 0 =>\n                $\"{playableSourceCount.GetValueOrDefault()}\\u6e90\",\n            CatalogPlayabilityStatus.Available => \"0\\u6e90\",\n            CatalogPlayabilityStatus.Playable => \"\\u53ef\\u64ad\",\n            CatalogPlayabilityStatus.Unavailable => \"\\u6682\\u65e0\\u8d44\\u6e90\",\n            CatalogPlayabilityStatus.Checking => \"\\u68c0\\u6d4b\\u4e2d\",\n            _ => null,\n        };\n}\n\n/// <summary>\n/// \u5f53\u524d\u5e94\u7528\u4f1a\u8bdd\u5185\u7684\u9996\u9875\u5019\u9009\u7ebf\u8def\u8ba1\u6570\u4e0e\u5feb\u7167\u7f13\u5b58\u3002\n/// \u9996\u9875\u89c6\u56fe\u4f1a\u5728\u5207\u6362\u9876\u5c42\u9875\u9762\u65f6\u9500\u6bc1\uff0c\u7ed3\u679c\u4e0d\u80fd\u53ea\u653e\u5728\u5361\u7247\u5bf9\u8c61\u91cc\u3002\n/// </summary>\npublic sealed class CatalogPlayabilityCache\n{\n    private readonly object _sync = new();\n    private readonly Dictionary<string, CatalogPlayability> _entries = new(StringComparer.Ordinal);\n    private int _generation;\n\n    public int Generation\n    {\n        get\n        {\n            lock (_sync)\n            {\n                return _generation;\n            }\n        }\n    }\n\n    public bool TryGet(CatalogItem item, out CatalogPlayability playability)\n    {\n        lock (_sync)\n        {\n            if (_entries.TryGetValue(GetKey(item), out var cached))\n            {\n                playability = cached;\n                return true;\n            }\n        }\n\n        playability = default!;\n        return false;\n    }\n\n    public bool Store(CatalogItem item, CatalogPlayability playability, int generation)\n    {\n        if (playability.Status is not (CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Unavailable))\n        {\n            return false;\n        }\n\n        lock (_sync)\n        {\n            if (generation != _generation)\n            {\n                return false;\n            }\n\n            _entries[GetKey(item)] = playability;\n            return true;\n        }\n    }\n\n    public void Invalidate()\n    {\n        lock (_sync)\n        {\n            _entries.Clear();\n            unchecked\n            {\n                _generation++;\n            }\n        }\n    }\n\n    private static string GetKey(CatalogItem item)\n    {\n        var source = item.Source.Trim().ToLowerInvariant();\n        if (!string.IsNullOrWhiteSpace(item.Id))\n        {\n            return $\"{source}:id:{item.Id.Trim()}\";\n        }\n\n        return $\"{source}:title:{CatalogTitleMatcher.Normalize(item.Title)}:year:{CatalogTitleMatcher.Normalize(item.Year)}\";\n    }\n}\n\n/// <summary>\u6e90\u7ad9\u5206\u7c7b",
+              "new_text": "/// <summary>\u6e90\u7ad9\u5206\u7c7b"
+            },
+            "result_chars": 52,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/AppleCms.cs",
+              "start_line": 1
+            },
+            "result_chars": 23280,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/AppleCms.cs",
+              "old_text": "public static class SearchResultSources\n{\n    public static string KeyOf(SearchResult result) => KeyOf(result.Source, result.PlaybackSourceKey);\n\n    public static string KeyOf(string source, string? playbackSourceKey) =>\n        $\"{source}\\u001f{playbackSourceKey ?? \"\"}\";\n\n    public static string SelectionKeyOf(SearchResult result) =>\n        SelectionKeyOf(result.Source, result.Id, result.PlaybackSourceKey);\n\n    public static string SelectionKeyOf(string source, string id, string? playbackSourceKey) =>\n        $\"{source}\\u001f{id}\\u001f{playbackSourceKey ?? \"\"}\";\n\n    public static IReadOnlyList<SearchResult> Expand(SearchResult result)\n    {\n        if (result.PlaybackSources is not { Count: > 0 })\n        {\n            return [result];\n        }\n\n        return result.PlaybackSources\n            .Select(playbackSource => result with\n            {\n                Episodes = playbackSource.Episodes,\n                EpisodeLabels = playbackSource.EpisodeLabels,\n                SourceName = $\"{result.SourceName} \u00b7 {playbackSource.Name}\",\n                PlaybackSourceKey = playbackSource.Key,\n            })\n            .ToList();\n    }\n}\n\n",
+              "new_text": ""
+            },
+            "result_chars": 47,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/AppleCms.cs",
+              "old_text": "using System.Text.Json;\n\nnamespace OrionTV.Desktop.Core;",
+              "new_text": "using System.Text.Json;\n\nnamespace OrionTV.Desktop.Core.VodSources;"
+            },
+            "result_chars": 47,
+            "error": false
+          },
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/SearchResultSources.cs",
+              "content": "namespace OrionTV.Desktop.Core;\n\npublic static class SearchResultSources\n{\n    public static string KeyOf(SearchResult result) => KeyOf(result.Source, result.PlaybackSourceKey);\n\n    public static string KeyOf(string source, string? playbackSourceKey) =>\n        $\"{source}\\u001f{playbackSourceKey ?? \"\"}\";\n\n    public static string SelectionKeyOf(SearchResult result) =>\n        SelectionKeyOf(result.Source, result.Id, result.PlaybackSourceKey);\n\n    public static string SelectionKeyOf(string source, string id, string? playbackSourceKey) =>\n        $\"{source}\\u001f{id}\\u001f{playbackSourceKey ?? \"\"}\";\n\n    public static IReadOnlyList<SearchResult> Expand(SearchResult result)\n    {\n        if (result.PlaybackSources is not { Count: > 0 })\n        {\n            return [result];\n        }\n\n        return result.PlaybackSources\n            .Select(playbackSource => result with\n            {\n                Episodes = playbackSource.Episodes,\n                EpisodeLabels = playbackSource.EpisodeLabels,\n                SourceName = $\"{result.SourceName} \u00b7 {playbackSource.Name}\",\n                PlaybackSourceKey = playbackSource.Key,\n            })\n            .ToList();\n    }\n}\n"
+            },
+            "result_chars": 57,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/Models.cs",
+              "start_line": 1
+            },
+            "result_chars": 5882,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/Models.cs",
+              "old_text": "    string? Actor = null);\n\npublic sealed class AppleCmsVodItem\n{\n    [JsonPropertyName(\"vod_id\")]\n    public object? VodId { get; set; }\n\n    [JsonPropertyName(\"vod_name\")]\n    public string? VodName { get; set; }\n\n    [JsonPropertyName(\"vod_pic\")]\n    public string? VodPic { get; set; }\n\n    [JsonPropertyName(\"vod_play_url\")]\n    public string? VodPlayUrl { get; set; }\n\n    [JsonPropertyName(\"vod_play_from\")]\n    public string? VodPlayFrom { get; set; }\n\n    [JsonPropertyName(\"vod_year\")]\n    public string? VodYear { get; set; }\n\n    [JsonPropertyName(\"vod_blurb\")]\n    public string? VodBlurb { get; set; }\n\n    [JsonPropertyName(\"vod_content\")]\n    public string? VodContent { get; set; }\n\n    [JsonPropertyName(\"vod_remarks\")]\n    public string? VodRemarks { get; set; }\n\n    [JsonPropertyName(\"type_name\")]\n    public string? TypeName { get; set; }\n\n    [JsonPropertyName(\"type_id\")]\n    public object? TypeId { get; set; }\n\n    [JsonPropertyName(\"vod_class\")]\n    public string? VodClass { get; set; }\n\n    [JsonPropertyName(\"vod_area\")]\n    public string? VodArea { get; set; }\n\n    [JsonPropertyName(\"vod_actor\")]\n    public string? VodActor { get; set; }\n\n    [JsonPropertyName(\"vod_director\")]\n    public string? VodDirector { get; set; }\n}",
+              "new_text": "    string? Actor = null);"
+            },
+            "result_chars": 45,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/Models.cs",
+              "old_text": "using System.Text.Json.Serialization;\n\nnamespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core;"
+            },
+            "result_chars": 45,
+            "error": false
+          },
+          {
+            "tool": "write_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/VodSources/AppleCmsVodItem.cs",
+              "content": "using System.Text.Json.Serialization;\n\nnamespace OrionTV.Desktop.Core.VodSources;\n\npublic sealed class AppleCmsVodItem\n{\n    [JsonPropertyName(\"vod_id\")]\n    public object? VodId { get; set; }\n\n    [JsonPropertyName(\"vod_name\")]\n    public string? VodName { get; set; }\n\n    [JsonPropertyName(\"vod_pic\")]\n    public string? VodPic { get; set; }\n\n    [JsonPropertyName(\"vod_play_url\")]\n    public string? VodPlayUrl { get; set; }\n\n    [JsonPropertyName(\"vod_play_from\")]\n    public string? VodPlayFrom { get; set; }\n\n    [JsonPropertyName(\"vod_year\")]\n    public string? VodYear { get; set; }\n\n    [JsonPropertyName(\"vod_blurb\")]\n    public string? VodBlurb { get; set; }\n\n    [JsonPropertyName(\"vod_content\")]\n    public string? VodContent { get; set; }\n\n    [JsonPropertyName(\"vod_remarks\")]\n    public string? VodRemarks { get; set; }\n\n    [JsonPropertyName(\"type_name\")]\n    public string? TypeName { get; set; }\n\n    [JsonPropertyName(\"type_id\")]\n    public object? TypeId { get; set; }\n\n    [JsonPropertyName(\"vod_class\")]\n    public string? VodClass { get; set; }\n\n    [JsonPropertyName(\"vod_area\")]\n    public string? VodArea { get; set; }\n\n    [JsonPropertyName(\"vod_actor\")]\n    public string? VodActor { get; set; }\n\n    [JsonPropertyName(\"vod_director\")]\n    public string? VodDirector { get; set; }\n}\n"
+            },
+            "result_chars": 64,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "^namespace|^using",
+              "path": "desktop/OrionTV.Desktop.Core"
+            },
+            "result_chars": 4043,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "Now the remaining VodSources files, StreamHealth and Library.",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/HomeCategoryMatcher.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core.VodSources;"
+            },
+            "result_chars": 58,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/IVodSourceClient.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core.VodSources;"
+            },
+            "result_chars": 55,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/MacCmsJsonClient.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core.VodSources;"
+            },
+            "result_chars": 55,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/MacCmsXmlClient.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core.VodSources;"
+            },
+            "result_chars": 54,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core.StreamHealth;"
+            },
+            "result_chars": 57,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/LocalStore.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core.Library;"
+            },
+            "result_chars": 49,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Core/LocalMediaLibrary.cs",
+              "old_text": "namespace OrionTV.Desktop.Core;",
+              "new_text": "namespace OrionTV.Desktop.Core.Library;"
+            },
+            "result_chars": 56,
+            "error": false
+          },
+          {
+            "tool": "build",
+            "input": {},
+            "result_chars": 20703,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/AppServices.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\nusing OrionTV.Desktop.Core.Library;\nusing OrionTV.Desktop.Core.StreamHealth;\nusing OrionTV.Desktop.Core.VodSources;\n"
+            },
+            "result_chars": 49,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\n"
+            },
+            "result_chars": 60,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Controls/VideoCardControl.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\n"
+            },
+            "result_chars": 68,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.AiImport;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.Core;\n"
+            },
+            "result_chars": 63,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.CacheCatalog;\nusing OrionTV.Desktop.App.Caching;\nusing OrionTV.Desktop.App.Controls;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.App.SourceHealth;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\n"
+            },
+            "result_chars": 59,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\n"
+            },
+            "result_chars": 62,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.CacheCatalog;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\n"
+            },
+            "result_chars": 57,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.App.LiveTranslation;\nusing OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.App.LiveTranslation;\nusing OrionTV.Desktop.App.Playback;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.StreamHealth;\n"
+            },
+            "result_chars": 57,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.CacheCatalog;\nusing OrionTV.Desktop.App.Caching;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\nusing OrionTV.Desktop.Core.Library;\n"
+            },
+            "result_chars": 63,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.App.LocalPlayback;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.App.LocalPlayback;\nusing OrionTV.Desktop.App.Playback;\nusing OrionTV.Desktop.App.SourceHealth;\n"
+            },
+            "result_chars": 59,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\n"
+            },
+            "result_chars": 59,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.App.LiveTranslation;\nusing OrionTV.Desktop.App.LocalPlayback;\nusing OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.App.LiveTranslation;\nusing OrionTV.Desktop.App.LocalPlayback;\nusing OrionTV.Desktop.App.Updates;\nusing OrionTV.Desktop.Core;\n"
+            },
+            "result_chars": 61,
+            "error": false
+          },
+          {
+            "tool": "build",
+            "input": {},
+            "result_chars": 212,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs",
+              "old_text": "using OrionTV.Desktop.Core.Catalog;\n",
+              "new_text": "using OrionTV.Desktop.Core.Catalog;\nusing OrionTV.Desktop.Core.Library;\n"
+            },
+            "result_chars": 57,
+            "error": false
+          },
+          {
+            "tool": "build",
+            "input": {},
+            "result_chars": 5706,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs",
+              "start_line": 1
+            },
+            "result_chars": 6970,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App.AiImport;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 58,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App.Updates;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 65,
+            "error": false
+          },
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs",
+              "start_line": 1
+            },
+            "result_chars": 4046,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App.CacheCatalog;\nusing OrionTV.Desktop.App.Caching;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 70,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs",
+              "old_text": "namespace OrionTV.Desktop.Tests;",
+              "new_text": "namespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 59,
+            "error": false
+          },
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "PlaybackState|PlaybackController",
+              "path": "desktop/OrionTV.Desktop.Tests"
+            },
+            "result_chars": 310,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs",
+              "start_line": 1
+            },
+            "result_chars": 8744,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\nusing OrionTV.Desktop.App.Views;\nusing OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.App.Views;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Library;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 65,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\nusing OrionTV.Desktop.App.Views;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App;\nusing OrionTV.Desktop.App.Hosting;\nusing OrionTV.Desktop.App.Playback;\nusing OrionTV.Desktop.App.Views;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 68,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs",
+              "old_text": "namespace OrionTV.Desktop.Tests;",
+              "new_text": "namespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 59,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App.CacheCatalog;\nusing OrionTV.Desktop.App.Caching;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 59,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App.Caching;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 60,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs",
+              "old_text": "using OrionTV.Desktop.App;\nusing OrionTV.Desktop.Core;\n\nnamespace OrionTV.Desktop.Tests;",
+              "new_text": "using OrionTV.Desktop.App.SourceHealth;\nusing OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.StreamHealth;\n\nnamespace OrionTV.Desktop.Tests.App;"
+            },
+            "result_chars": 65,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "Now Core test usings.",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\nusing OrionTV.Desktop.Core.VodSources;\n"
+            },
+            "result_chars": 60,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.StreamHealth;\n"
+            },
+            "result_chars": 65,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.VodSources;\n"
+            },
+            "result_chars": 64,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Library;\n"
+            },
+            "result_chars": 60,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Library;\n"
+            },
+            "result_chars": 62,
+            "error": false
+          },
+          {
+            "tool": "build",
+            "input": {},
+            "result_chars": 5467,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "OrionTV\\.Desktop\\.App\\.",
+              "path": "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs"
+            },
+            "result_chars": 320,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "read_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+              "start_line": 8
+            },
+            "result_chars": 12493,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+              "old_text": "        var settings = new DesktopSettings(\n            SubscriptionUrl: \"https://subscription.example/config.json\");\n\n        var urls = OrionTV.Desktop.App.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);",
+              "new_text": "        var settings = new DesktopSettings(\n            SubscriptionUrl: \"https://subscription.example/config.json\");\n\n        var urls = OrionTV.Desktop.App.Hosting.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);"
+            },
+            "result_chars": 60,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs",
+              "old_text": "        var settings = new DesktopSettings(SubscriptionUrl: \"\");\n\n        var urls = OrionTV.Desktop.App.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);",
+              "new_text": "        var settings = new DesktopSettings(SubscriptionUrl: \"\");\n\n        var urls = OrionTV.Desktop.App.Hosting.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);"
+            },
+            "result_chars": 60,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Library;\n"
+            },
+            "result_chars": 62,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\n",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.VodSources;\n"
+            },
+            "result_chars": 56,
+            "error": false
+          },
+          {
+            "tool": "edit_file",
+            "input": {
+              "path": "desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs",
+              "old_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.StreamHealth;",
+              "new_text": "using OrionTV.Desktop.Core;\nusing OrionTV.Desktop.Core.Catalog;\nusing OrionTV.Desktop.Core.StreamHealth;"
+            },
+            "result_chars": 65,
+            "error": false
+          },
+          {
+            "tool": "build",
+            "input": {},
+            "result_chars": 16,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "using OrionTV\\.Desktop\\.App;|OrionTV\\.Desktop\\.App\\.(MainWindow|App\\b)|clr-namespace:OrionTV\\.Desktop\\.App\"",
+              "path": "desktop"
+            },
+            "result_chars": 601,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "app:",
+              "path": "desktop/OrionTV.Desktop.App/Views/DetailView.xaml"
+            },
+            "result_chars": 10,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "",
+        "calls": [
+          {
+            "tool": "grep",
+            "input": {
+              "pattern": "^using OrionTV\\.Desktop\\.App",
+              "path": "desktop/OrionTV.Desktop.App"
+            },
+            "result_chars": 3320,
+            "error": false
+          }
+        ]
+      },
+      {
+        "text": "I've refactored the solution to remove the cycles, the unstable dependencies and the three God Components. The build succeeds, but there was no test runner available here, so the tests have not been run. Smells 7\u201312 and 14 are only reduced or left as they are; they are covered at the end and in each smell's rationale.\n\n**What changed:**\n- **App project root namespace:** it now holds only the shell (`App`, `MainWindow` and its nested `SectionNavigationState`) plus the app-level converter. Nothing else in the project depends on it, so both cycles are broken at the source.\n- **Rest of the old root:** the rest of the old root namespace moved into new namespaces, each for one concern:\n  - `Hosting`: shared services and navigation parameters (`AppServices`, `IAppHost`, `AppPage`).\n  - `Playback`: the LibVLC player (`PlaybackController`, `PlaybackState`).\n  - `Caching`: HLS download cache and download manager.\n  - `CacheCatalog`: lookups over cached entries.\n  - `SourceHealth`: VOD source probing.\n  - `Updates`: the update service.\n  - `AiImport`: AI CLI launcher and source watcher.\n  - `ImageLoader` went to `Controls`. The page-only helpers (`LiveChannelViewModel`, `OsdController`, `PlayerKeyboardHook`) and the page contracts (`INavigationAware`, `INavigationVisibilityAware`) went to `Views`.\n- **Core project:** split into `Core.Catalog`, `Core.VodSources`, `Core.StreamHealth` and `Core.Library`. All of them depend on `Core`, never the other way round. `SearchResultSources` and `AppleCmsVodItem` got their own files.\n- **Tests project:** tests for App-project classes moved to `OrionTV.Desktop.Tests.App`. Only namespaces, `using`s and one fully qualified `AppServices` reference changed; no assertions were touched.\n\n**Result per smell:**\n\n| Smell | Status | Why |\n|---|---|---|\n| 1, 2 (cycles) | Removed | Nothing points back to the root; `LocalPlayback` now depends on `Playback`, not the root |\n| 5, 6 (unstable dependency) | Removed | Every dependency now points to an equally or more stable namespace |\n| 3, 4 (App root too big / mixed) | Removed | Root has 4 classes |\n| 13 (Core too big) | Removed | 56 \u2192 29 classes |\n| 15 (Tests too big) | Removed | 25 and 17 classes |\n| 7 (`Views` mixed) | Reduced | 9 unconnected groups \u2192 2; LCC down from 0.53 to roughly 0.09 by my count |\n| 8\u201312 (scattered functionality in `Views`) | Not removed | Each page combines several services by design; removing this would mean adding a facade or presenter layer, which is a separate redesign |\n| 14 (Tests mixed) | Not removed | Test classes are independent of each other by nature |\n\n**Things to check:**\n- **New small namespaces:** if Designite also scores small namespaces, it may report new Feature Concentration findings. The likely ones are `AiImport` (two unconnected classes) and the remaining `Core` (several stand-alone helper classes).\n- **Folders:** small moved files are now in folders that match their namespace. Large files (e.g. `VodCacheService.cs` at about 2,600 lines, `AppServices.cs`, `CatalogService.cs`) only had their namespace line changed, to avoid rewriting them by hand. A `git mv` would put them in matching folders.\n- **Leftover XAML alias:** `DetailView.xaml` still declares an unused `app` alias pointing to the root namespace. It isn't a code dependency, so I left it.",
+        "calls": [
+          {
+            "tool": "submit_refactoring"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 154,
+      "output_tokens": 82463,
+      "cache_creation_input_tokens": 335098,
+      "cache_read_input_tokens": 14810531
+    }
+  }
+}

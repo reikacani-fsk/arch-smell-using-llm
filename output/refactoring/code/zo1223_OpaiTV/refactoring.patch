@@ -1,0 +1,1356 @@
+diff --git a/desktop/OrionTV.Desktop.App/AiCliLauncher.cs b/desktop/OrionTV.Desktop.App/AiCliLauncher.cs
+index ad610e9..4c87067 100644
+--- a/desktop/OrionTV.Desktop.App/AiCliLauncher.cs
++++ b/desktop/OrionTV.Desktop.App/AiCliLauncher.cs
+@@ -3,7 +3,7 @@ using System.IO;
+ using System.Text;
+ using OrionTV.Desktop.Core;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.AiImport;
+ 
+ public enum AiCliTool
+ {
+diff --git a/desktop/OrionTV.Desktop.App/AiSourceWatcher.cs b/desktop/OrionTV.Desktop.App/AiSourceWatcher.cs
+index 2594182..7006fd1 100644
+--- a/desktop/OrionTV.Desktop.App/AiSourceWatcher.cs
++++ b/desktop/OrionTV.Desktop.App/AiSourceWatcher.cs
+@@ -2,7 +2,7 @@ using System.IO;
+ using System.Windows.Threading;
+ using OrionTV.Desktop.Core;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.AiImport;
+ 
+ /// <summary>
+ /// 监视 AI 写入的 extra_sources.json / settings.json，防抖后通知应用重载源。
+diff --git a/desktop/OrionTV.Desktop.App/AppServices.cs b/desktop/OrionTV.Desktop.App/AppServices.cs
+index ff0caab..f7eff14 100644
+--- a/desktop/OrionTV.Desktop.App/AppServices.cs
++++ b/desktop/OrionTV.Desktop.App/AppServices.cs
+@@ -1,8 +1,16 @@
+ using System.Net.Http;
+ using LibVLCSharp.Shared;
++using OrionTV.Desktop.App.Caching;
++using OrionTV.Desktop.App.Playback;
++using OrionTV.Desktop.App.SourceHealth;
++using OrionTV.Desktop.App.Updates;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
++using OrionTV.Desktop.Core.Library;
++using OrionTV.Desktop.Core.StreamHealth;
++using OrionTV.Desktop.Core.VodSources;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Hosting;
+ 
+ /// <summary>跨页面共享的服务与状态容器（单例，由 MainWindow 创建）。</summary>
+ public sealed class AppServices : IDisposable
+diff --git a/desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs b/desktop/OrionTV.Desktop.App/CacheCatalog/LocalCachePlaybackCatalog.cs
+similarity index 97%
+rename from desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs
+rename to desktop/OrionTV.Desktop.App/CacheCatalog/LocalCachePlaybackCatalog.cs
+index f9515d7..cd7cfe5 100644
+--- a/desktop/OrionTV.Desktop.App/LocalCachePlaybackCatalog.cs
++++ b/desktop/OrionTV.Desktop.App/CacheCatalog/LocalCachePlaybackCatalog.cs
+@@ -1,9 +1,12 @@
+ using System.IO;
+ using System.Security.Cryptography;
+ using System.Text;
++using OrionTV.Desktop.App.Caching;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Library;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.CacheCatalog;
+ 
+ internal sealed record LocalCachePlaybackGroup(
+     string Id,
+diff --git a/desktop/OrionTV.Desktop.App/VodCacheLookup.cs b/desktop/OrionTV.Desktop.App/CacheCatalog/VodCacheLookup.cs
+similarity index 95%
+rename from desktop/OrionTV.Desktop.App/VodCacheLookup.cs
+rename to desktop/OrionTV.Desktop.App/CacheCatalog/VodCacheLookup.cs
+index 7b25a18..f14ac50 100644
+--- a/desktop/OrionTV.Desktop.App/VodCacheLookup.cs
++++ b/desktop/OrionTV.Desktop.App/CacheCatalog/VodCacheLookup.cs
+@@ -1,4 +1,6 @@
+-namespace OrionTV.Desktop.App;
++using OrionTV.Desktop.App.Caching;
++
++namespace OrionTV.Desktop.App.CacheCatalog;
+ 
+ internal sealed class VodCacheLookup
+ {
+diff --git a/desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs b/desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs
+index c36b178..378518d 100644
+--- a/desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Controls/CardGrid.xaml.cs
+@@ -3,6 +3,7 @@ using System.Windows;
+ using System.Windows.Controls;
+ using System.Windows.Threading;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
+ 
+ namespace OrionTV.Desktop.App.Controls;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/ImageLoader.cs b/desktop/OrionTV.Desktop.App/Controls/ImageLoader.cs
+similarity index 99%
+rename from desktop/OrionTV.Desktop.App/ImageLoader.cs
+rename to desktop/OrionTV.Desktop.App/Controls/ImageLoader.cs
+index 5c75551..a26067f 100644
+--- a/desktop/OrionTV.Desktop.App/ImageLoader.cs
++++ b/desktop/OrionTV.Desktop.App/Controls/ImageLoader.cs
+@@ -5,7 +5,7 @@ using System.Windows;
+ using System.Windows.Controls;
+ using System.Windows.Media.Imaging;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Controls;
+ 
+ /// <summary>
+ /// Image 的附加属性 ImageLoader.SourceUrl：异步下载远程图片并设为 Source。
+diff --git a/desktop/OrionTV.Desktop.App/Controls/VideoCardControl.xaml.cs b/desktop/OrionTV.Desktop.App/Controls/VideoCardControl.xaml.cs
+index 3bd82c5..17338cc 100644
+--- a/desktop/OrionTV.Desktop.App/Controls/VideoCardControl.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Controls/VideoCardControl.xaml.cs
+@@ -2,6 +2,7 @@ using System.Windows;
+ using System.Windows.Controls;
+ using System.Windows.Media;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
+ 
+ namespace OrionTV.Desktop.App.Controls;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/DesktopUpdateService.cs b/desktop/OrionTV.Desktop.App/DesktopUpdateService.cs
+index 1fbcc23..92e4817 100644
+--- a/desktop/OrionTV.Desktop.App/DesktopUpdateService.cs
++++ b/desktop/OrionTV.Desktop.App/DesktopUpdateService.cs
+@@ -8,7 +8,7 @@ using System.Text.Json;
+ using System.Text.RegularExpressions;
+ using OrionTV.Desktop.Core;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Updates;
+ 
+ public sealed record DesktopUpdateInfo(
+     Version Version,
+diff --git a/desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs b/desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs
+index 6088f27..438fee2 100644
+--- a/desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs
++++ b/desktop/OrionTV.Desktop.App/HlsAesDecryptMerger.cs
+@@ -3,7 +3,7 @@ using System.IO;
+ using System.Security.Cryptography;
+ using System.Text.RegularExpressions;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Caching;
+ 
+ /// <summary>
+ /// 将已下载完成的 AES-128 HLS 缓存解密并合并为单个 merged.ts。
+diff --git a/desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs b/desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs
+index 90e6e12..5cc07d0 100644
+--- a/desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs
++++ b/desktop/OrionTV.Desktop.App/LocalPlayback/MpvLocalEngine.cs
+@@ -5,6 +5,7 @@ using System.IO.Pipes;
+ using System.Text;
+ using System.Text.Json;
+ using System.Windows.Threading;
++using OrionTV.Desktop.App.Playback;
+ 
+ namespace OrionTV.Desktop.App.LocalPlayback;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/MainWindow.xaml.cs b/desktop/OrionTV.Desktop.App/MainWindow.xaml.cs
+index 0259fc5..77762e8 100644
+--- a/desktop/OrionTV.Desktop.App/MainWindow.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/MainWindow.xaml.cs
+@@ -1,5 +1,7 @@
+ using System.Windows;
+ using System.Windows.Controls;
++using OrionTV.Desktop.App.AiImport;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.App.Views;
+ 
+ namespace OrionTV.Desktop.App;
+diff --git a/desktop/OrionTV.Desktop.App/Navigation.cs b/desktop/OrionTV.Desktop.App/Navigation.cs
+index 5c35418..1830f89 100644
+--- a/desktop/OrionTV.Desktop.App/Navigation.cs
++++ b/desktop/OrionTV.Desktop.App/Navigation.cs
+@@ -1,6 +1,6 @@
+ using OrionTV.Desktop.Core;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Hosting;
+ 
+ /// <summary>应用内页面枚举（对齐安卓侧边栏 + 详情/播放）。</summary>
+ public enum AppPage
+@@ -29,18 +29,6 @@ public interface IAppHost
+     void SetFullscreen(bool enabled);
+ }
+ 
+-/// <summary>页面可选实现：导航到该页时接收参数。</summary>
+-public interface INavigationAware
+-{
+-    void OnNavigatedTo(object? parameter);
+-}
+-
+-public interface INavigationVisibilityAware
+-{
+-    void OnShown();
+-    void OnHidden();
+-}
+-
+ public sealed record PlaybackResumeContext(
+     int EpisodeIndex,
+     double PositionMs,
+diff --git a/desktop/OrionTV.Desktop.App/PlaybackController.cs b/desktop/OrionTV.Desktop.App/PlaybackController.cs
+index 3d4d537..ed33c1c 100644
+--- a/desktop/OrionTV.Desktop.App/PlaybackController.cs
++++ b/desktop/OrionTV.Desktop.App/PlaybackController.cs
+@@ -2,7 +2,7 @@ using System.Windows.Threading;
+ using LibVLCSharp.Shared;
+ using OrionTV.Desktop.Core;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Playback;
+ 
+ /// <summary>播放状态（聚合 LibVLC 事件，供 UI 显示加载/缓冲/错误/暂停态）。</summary>
+ public enum PlaybackState
+diff --git a/desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs b/desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs
+index 3b62db1..738ea1a 100644
+--- a/desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/AiImportDialog.xaml.cs
+@@ -3,6 +3,8 @@ using System.IO;
+ using System.Windows;
+ using System.Windows.Input;
+ using System.Windows.Media;
++using OrionTV.Desktop.App.AiImport;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.Core;
+ 
+ namespace OrionTV.Desktop.App.Views;
+diff --git a/desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs
+index 6c50b13..59d6f42 100644
+--- a/desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/DetailView.xaml.cs
+@@ -3,7 +3,13 @@ using System.Windows;
+ using System.Windows.Controls;
+ using System.Windows.Media;
+ using System.Windows.Threading;
++using OrionTV.Desktop.App.CacheCatalog;
++using OrionTV.Desktop.App.Caching;
++using OrionTV.Desktop.App.Controls;
++using OrionTV.Desktop.App.Hosting;
++using OrionTV.Desktop.App.SourceHealth;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
+ 
+ namespace OrionTV.Desktop.App.Views;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs
+index 6f14a38..9783cf2 100644
+--- a/desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/FavoritesView.xaml.cs
+@@ -1,5 +1,7 @@
+ using System.Windows.Controls;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
+ 
+ namespace OrionTV.Desktop.App.Views;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs
+index dc063ec..ee1bfad 100644
+--- a/desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/HomeView.xaml.cs
+@@ -1,6 +1,10 @@
+ using System.Windows;
+ using System.Windows.Controls;
++using OrionTV.Desktop.App.CacheCatalog;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
++using OrionTV.Desktop.Core.Library;
+ 
+ namespace OrionTV.Desktop.App.Views;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs b/desktop/OrionTV.Desktop.App/Views/LiveChannelViewModel.cs
+similarity index 97%
+rename from desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs
+rename to desktop/OrionTV.Desktop.App/Views/LiveChannelViewModel.cs
+index 136c968..39d49f7 100644
+--- a/desktop/OrionTV.Desktop.App/LiveChannelViewModel.cs
++++ b/desktop/OrionTV.Desktop.App/Views/LiveChannelViewModel.cs
+@@ -2,8 +2,9 @@ using System.ComponentModel;
+ using System.Runtime.CompilerServices;
+ using System.Windows.Media;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.StreamHealth;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Views;
+ 
+ /// <summary>
+ /// 频道列表项视图模型：包裹不可变的 <see cref="LiveChannel"/> 记录，
+diff --git a/desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs
+index 287ed33..76830f8 100644
+--- a/desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/LiveView.xaml.cs
+@@ -4,8 +4,11 @@ using System.Windows.Controls;
+ using System.Windows.Input;
+ using System.Windows.Media;
+ using System.Windows.Threading;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.App.LiveTranslation;
++using OrionTV.Desktop.App.Playback;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.StreamHealth;
+ 
+ namespace OrionTV.Desktop.App.Views;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs
+index 3770a1d..55f13af 100644
+--- a/desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/LocalVideoView.xaml.cs
+@@ -4,7 +4,12 @@ using System.Windows;
+ using System.Windows.Controls;
+ using System.Windows.Threading;
+ using Microsoft.Win32;
++using OrionTV.Desktop.App.CacheCatalog;
++using OrionTV.Desktop.App.Caching;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
++using OrionTV.Desktop.Core.Library;
+ 
+ namespace OrionTV.Desktop.App.Views;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/Views/NavigationContracts.cs b/desktop/OrionTV.Desktop.App/Views/NavigationContracts.cs
+new file mode 100644
+index 0000000..67a5610
+--- /dev/null
++++ b/desktop/OrionTV.Desktop.App/Views/NavigationContracts.cs
+@@ -0,0 +1,13 @@
++namespace OrionTV.Desktop.App.Views;
++
++/// <summary>页面可选实现：导航到该页时接收参数。</summary>
++public interface INavigationAware
++{
++    void OnNavigatedTo(object? parameter);
++}
++
++public interface INavigationVisibilityAware
++{
++    void OnShown();
++    void OnHidden();
++}
+diff --git a/desktop/OrionTV.Desktop.App/OsdController.cs b/desktop/OrionTV.Desktop.App/Views/OsdController.cs
+similarity index 98%
+rename from desktop/OrionTV.Desktop.App/OsdController.cs
+rename to desktop/OrionTV.Desktop.App/Views/OsdController.cs
+index 609e2a3..0682f00 100644
+--- a/desktop/OrionTV.Desktop.App/OsdController.cs
++++ b/desktop/OrionTV.Desktop.App/Views/OsdController.cs
+@@ -3,7 +3,7 @@ using System.Windows.Input;
+ using System.Windows.Media.Animation;
+ using System.Windows.Threading;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Views;
+ 
+ /// <summary>
+ /// 播放器 OSD 自动隐藏：鼠标移动时显示控制层并重置计时，静止数秒后淡出并隐藏光标；
+diff --git a/desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs b/desktop/OrionTV.Desktop.App/Views/PlayerKeyboardHook.cs
+similarity index 99%
+rename from desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs
+rename to desktop/OrionTV.Desktop.App/Views/PlayerKeyboardHook.cs
+index 2620ae9..8a0624c 100644
+--- a/desktop/OrionTV.Desktop.App/PlayerKeyboardHook.cs
++++ b/desktop/OrionTV.Desktop.App/Views/PlayerKeyboardHook.cs
+@@ -3,7 +3,7 @@ using System.Windows;
+ using System.Windows.Input;
+ using System.Windows.Interop;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Views;
+ 
+ /// <summary>
+ /// Captures player shortcuts even when keyboard focus belongs to an embedded native video HWND
+diff --git a/desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs
+index 0e1a894..c790047 100644
+--- a/desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/PlayerView.xaml.cs
+@@ -6,7 +6,10 @@ using System.Windows.Input;
+ using System.Windows.Interop;
+ using System.Windows.Threading;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.App.LocalPlayback;
++using OrionTV.Desktop.App.Playback;
++using OrionTV.Desktop.App.SourceHealth;
+ 
+ namespace OrionTV.Desktop.App.Views;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs
+index 5691f5a..604aae7 100644
+--- a/desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/SearchView.xaml.cs
+@@ -1,6 +1,8 @@
+ using System.Windows.Controls;
+ using System.Windows.Input;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
+ 
+ namespace OrionTV.Desktop.App.Views;
+ 
+diff --git a/desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs b/desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs
+index 129417d..b7734e4 100644
+--- a/desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs
++++ b/desktop/OrionTV.Desktop.App/Views/SettingsView.xaml.cs
+@@ -6,8 +6,10 @@ using System.Net.Http;
+ using System.Windows;
+ using System.Windows.Controls;
+ using Microsoft.Win32;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.App.LiveTranslation;
+ using OrionTV.Desktop.App.LocalPlayback;
++using OrionTV.Desktop.App.Updates;
+ using OrionTV.Desktop.Core;
+ 
+ namespace OrionTV.Desktop.App.Views;
+diff --git a/desktop/OrionTV.Desktop.App/VodCacheService.cs b/desktop/OrionTV.Desktop.App/VodCacheService.cs
+index 900b3ad..48d9233 100644
+--- a/desktop/OrionTV.Desktop.App/VodCacheService.cs
++++ b/desktop/OrionTV.Desktop.App/VodCacheService.cs
+@@ -10,7 +10,7 @@ using System.Text.Json;
+ using System.Text.RegularExpressions;
+ using OrionTV.Desktop.Core;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Caching;
+ 
+ public sealed record VodCacheProgress(
+     int CompletedSegments,
+diff --git a/desktop/OrionTV.Desktop.App/VodDownloadManager.cs b/desktop/OrionTV.Desktop.App/VodDownloadManager.cs
+index 00562a0..f7dd230 100644
+--- a/desktop/OrionTV.Desktop.App/VodDownloadManager.cs
++++ b/desktop/OrionTV.Desktop.App/VodDownloadManager.cs
+@@ -1,7 +1,7 @@
+ using System.Collections.Concurrent;
+ using OrionTV.Desktop.Core;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.Caching;
+ 
+ public enum VodDownloadJobStatus
+ {
+diff --git a/desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs b/desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs
+index 7aa9472..7cc1b69 100644
+--- a/desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs
++++ b/desktop/OrionTV.Desktop.App/VodPlayableSourceResolver.cs
+@@ -1,7 +1,8 @@
+ using System.Collections.Concurrent;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.SourceHealth;
+ 
+ internal sealed record VodPlayableSourceResolution(
+     IReadOnlyList<SearchResult> Candidates,
+diff --git a/desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs b/desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs
+index a425c58..f5e8779 100644
+--- a/desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs
++++ b/desktop/OrionTV.Desktop.App/VodSourceHealthProbe.cs
+@@ -1,8 +1,9 @@
+ using System.Runtime.InteropServices;
+ using LibVLCSharp.Shared;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.StreamHealth;
+ 
+-namespace OrionTV.Desktop.App;
++namespace OrionTV.Desktop.App.SourceHealth;
+ 
+ internal enum VodSourceProbeStatus
+ {
+diff --git a/desktop/OrionTV.Desktop.Core/AppleCms.cs b/desktop/OrionTV.Desktop.Core/AppleCms.cs
+index 0ec14a7..584491b 100644
+--- a/desktop/OrionTV.Desktop.Core/AppleCms.cs
++++ b/desktop/OrionTV.Desktop.Core/AppleCms.cs
+@@ -1,6 +1,6 @@
+ using System.Text.Json;
+ 
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.VodSources;
+ 
+ public static class AppleCmsUrlBuilder
+ {
+@@ -228,38 +228,6 @@ public static class AppleCmsEpisodeParser
+     }
+ }
+ 
+-public static class SearchResultSources
+-{
+-    public static string KeyOf(SearchResult result) => KeyOf(result.Source, result.PlaybackSourceKey);
+-
+-    public static string KeyOf(string source, string? playbackSourceKey) =>
+-        $"{source}\u001f{playbackSourceKey ?? ""}";
+-
+-    public static string SelectionKeyOf(SearchResult result) =>
+-        SelectionKeyOf(result.Source, result.Id, result.PlaybackSourceKey);
+-
+-    public static string SelectionKeyOf(string source, string id, string? playbackSourceKey) =>
+-        $"{source}\u001f{id}\u001f{playbackSourceKey ?? ""}";
+-
+-    public static IReadOnlyList<SearchResult> Expand(SearchResult result)
+-    {
+-        if (result.PlaybackSources is not { Count: > 0 })
+-        {
+-            return [result];
+-        }
+-
+-        return result.PlaybackSources
+-            .Select(playbackSource => result with
+-            {
+-                Episodes = playbackSource.Episodes,
+-                EpisodeLabels = playbackSource.EpisodeLabels,
+-                SourceName = $"{result.SourceName} · {playbackSource.Name}",
+-                PlaybackSourceKey = playbackSource.Key,
+-            })
+-            .ToList();
+-    }
+-}
+-
+ public static class AppleCmsMapper
+ {
+     public static SearchResult ToSearchResult(VideoSource source, AppleCmsVodItem item)
+diff --git a/desktop/OrionTV.Desktop.Core/Catalog/CatalogPlayability.cs b/desktop/OrionTV.Desktop.Core/Catalog/CatalogPlayability.cs
+new file mode 100644
+index 0000000..3d59a80
+--- /dev/null
++++ b/desktop/OrionTV.Desktop.Core/Catalog/CatalogPlayability.cs
+@@ -0,0 +1,141 @@
++namespace OrionTV.Desktop.Core.Catalog;
++
++public enum CatalogPlayabilityStatus
++{
++    Unknown,
++    Checking,
++    Available,
++    Playable,
++    Unavailable,
++}
++
++public sealed record CatalogPlayability(
++    CatalogPlayabilityStatus Status,
++    int PlayableSourceCount,
++    IReadOnlyList<SearchResult>? CandidateSources = null)
++{
++    /// <summary>
++    /// 海报使用的候选线路计数，不执行 HTTP 媒体校验或播放器解码：
++    /// - 标题用 <see cref="CatalogTitleMatcher"/>（与 GetDetailSourcesAsync 一致）
++    /// - 去重用 SelectionKey（source+id+线路），与详情 chip 一致
++    /// - 保留无剧集条目（TVBox search 常无 play_url，详情页再补拉）
++    /// 匹配到任意线路即 Available；进入详情后再从这些候选中筛选真正可播线路。
++    /// </summary>
++    public static CatalogPlayability FromDetailSources(string title, IEnumerable<SearchResult> results)
++    {
++        var candidates = results
++            .SelectMany(SearchResultSources.Expand)
++            .Where(item => CatalogTitleMatcher.Matches(item.Title, title))
++            .GroupBy(SearchResultSources.SelectionKeyOf, StringComparer.Ordinal)
++            .Select(items => items.First())
++            .ToList();
++
++        return new CatalogPlayability(
++            candidates.Count > 0 ? CatalogPlayabilityStatus.Available : CatalogPlayabilityStatus.Unavailable,
++            candidates.Count,
++            candidates);
++    }
++
++    public CatalogItem ApplyTo(CatalogItem item) => item with
++    {
++        PlayabilityStatus = Status,
++        PlayableSourceCount = PlayableSourceCount,
++        CandidateSources = CandidateSources,
++        PlayableSources = null,
++    };
++}
++
++public static class CatalogPlayabilityBadge
++{
++    public static string? GetLabel(CatalogPlayabilityStatus status, int? playableSourceCount) =>
++        status switch
++        {
++            CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Playable
++                when playableSourceCount.GetValueOrDefault() > 0 =>
++                $"{playableSourceCount.GetValueOrDefault()}\u6e90",
++            CatalogPlayabilityStatus.Available => "0\u6e90",
++            CatalogPlayabilityStatus.Playable => "\u53ef\u64ad",
++            CatalogPlayabilityStatus.Unavailable => "\u6682\u65e0\u8d44\u6e90",
++            CatalogPlayabilityStatus.Checking => "\u68c0\u6d4b\u4e2d",
++            _ => null,
++        };
++}
++
++/// <summary>
++/// 当前应用会话内的首页候选线路计数与快照缓存。
++/// 首页视图会在切换顶层页面时销毁，结果不能只放在卡片对象里。
++/// </summary>
++public sealed class CatalogPlayabilityCache
++{
++    private readonly object _sync = new();
++    private readonly Dictionary<string, CatalogPlayability> _entries = new(StringComparer.Ordinal);
++    private int _generation;
++
++    public int Generation
++    {
++        get
++        {
++            lock (_sync)
++            {
++                return _generation;
++            }
++        }
++    }
++
++    public bool TryGet(CatalogItem item, out CatalogPlayability playability)
++    {
++        lock (_sync)
++        {
++            if (_entries.TryGetValue(GetKey(item), out var cached))
++            {
++                playability = cached;
++                return true;
++            }
++        }
++
++        playability = default!;
++        return false;
++    }
++
++    public bool Store(CatalogItem item, CatalogPlayability playability, int generation)
++    {
++        if (playability.Status is not (CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Unavailable))
++        {
++            return false;
++        }
++
++        lock (_sync)
++        {
++            if (generation != _generation)
++            {
++                return false;
++            }
++
++            _entries[GetKey(item)] = playability;
++            return true;
++        }
++    }
++
++    public void Invalidate()
++    {
++        lock (_sync)
++        {
++            _entries.Clear();
++            unchecked
++            {
++                _generation++;
++            }
++        }
++    }
++
++    private static string GetKey(CatalogItem item)
++    {
++        var source = item.Source.Trim().ToLowerInvariant();
++        if (!string.IsNullOrWhiteSpace(item.Id))
++        {
++            return $"{source}:id:{item.Id.Trim()}";
++        }
++
++        return $"{source}:title:{CatalogTitleMatcher.Normalize(item.Title)}:year:{CatalogTitleMatcher.Normalize(item.Year)}";
++    }
++}
+diff --git a/desktop/OrionTV.Desktop.Core/CatalogModels.cs b/desktop/OrionTV.Desktop.Core/CatalogModels.cs
+index 02b5537..cc97b6c 100644
+--- a/desktop/OrionTV.Desktop.Core/CatalogModels.cs
++++ b/desktop/OrionTV.Desktop.Core/CatalogModels.cs
+@@ -1,22 +1,5 @@
+ namespace OrionTV.Desktop.Core;
+ 
+-/// <summary>豆瓣条目（首页分类网格数据）。</summary>
+-public sealed record DoubanItem(
+-    string Id,
+-    string Title,
+-    string Poster,
+-    string? Rate = null,
+-    string? Year = null);
+-
+-public enum CatalogPlayabilityStatus
+-{
+-    Unknown,
+-    Checking,
+-    Available,
+-    Playable,
+-    Unavailable,
+-}
+-
+ /// <summary>详情/海报共用的标题匹配（去空白、大小写归一）。</summary>
+ public static class CatalogTitleMatcher
+ {
+@@ -41,137 +24,6 @@ public static class CatalogTitleMatcher
+             : new string(value.Trim().ToLowerInvariant().Where(c => !char.IsWhiteSpace(c)).ToArray());
+ }
+ 
+-public sealed record CatalogPlayability(
+-    CatalogPlayabilityStatus Status,
+-    int PlayableSourceCount,
+-    IReadOnlyList<SearchResult>? CandidateSources = null)
+-{
+-    /// <summary>
+-    /// 海报使用的候选线路计数，不执行 HTTP 媒体校验或播放器解码：
+-    /// - 标题用 <see cref="CatalogTitleMatcher"/>（与 GetDetailSourcesAsync 一致）
+-    /// - 去重用 SelectionKey（source+id+线路），与详情 chip 一致
+-    /// - 保留无剧集条目（TVBox search 常无 play_url，详情页再补拉）
+-    /// 匹配到任意线路即 Available；进入详情后再从这些候选中筛选真正可播线路。
+-    /// </summary>
+-    public static CatalogPlayability FromDetailSources(string title, IEnumerable<SearchResult> results)
+-    {
+-        var candidates = results
+-            .SelectMany(SearchResultSources.Expand)
+-            .Where(item => CatalogTitleMatcher.Matches(item.Title, title))
+-            .GroupBy(SearchResultSources.SelectionKeyOf, StringComparer.Ordinal)
+-            .Select(items => items.First())
+-            .ToList();
+-
+-        return new CatalogPlayability(
+-            candidates.Count > 0 ? CatalogPlayabilityStatus.Available : CatalogPlayabilityStatus.Unavailable,
+-            candidates.Count,
+-            candidates);
+-    }
+-
+-    public CatalogItem ApplyTo(CatalogItem item) => item with
+-    {
+-        PlayabilityStatus = Status,
+-        PlayableSourceCount = PlayableSourceCount,
+-        CandidateSources = CandidateSources,
+-        PlayableSources = null,
+-    };
+-}
+-
+-public static class CatalogPlayabilityBadge
+-{
+-    public static string? GetLabel(CatalogPlayabilityStatus status, int? playableSourceCount) =>
+-        status switch
+-        {
+-            CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Playable
+-                when playableSourceCount.GetValueOrDefault() > 0 =>
+-                $"{playableSourceCount.GetValueOrDefault()}\u6e90",
+-            CatalogPlayabilityStatus.Available => "0\u6e90",
+-            CatalogPlayabilityStatus.Playable => "\u53ef\u64ad",
+-            CatalogPlayabilityStatus.Unavailable => "\u6682\u65e0\u8d44\u6e90",
+-            CatalogPlayabilityStatus.Checking => "\u68c0\u6d4b\u4e2d",
+-            _ => null,
+-        };
+-}
+-
+-/// <summary>
+-/// 当前应用会话内的首页候选线路计数与快照缓存。
+-/// 首页视图会在切换顶层页面时销毁，结果不能只放在卡片对象里。
+-/// </summary>
+-public sealed class CatalogPlayabilityCache
+-{
+-    private readonly object _sync = new();
+-    private readonly Dictionary<string, CatalogPlayability> _entries = new(StringComparer.Ordinal);
+-    private int _generation;
+-
+-    public int Generation
+-    {
+-        get
+-        {
+-            lock (_sync)
+-            {
+-                return _generation;
+-            }
+-        }
+-    }
+-
+-    public bool TryGet(CatalogItem item, out CatalogPlayability playability)
+-    {
+-        lock (_sync)
+-        {
+-            if (_entries.TryGetValue(GetKey(item), out var cached))
+-            {
+-                playability = cached;
+-                return true;
+-            }
+-        }
+-
+-        playability = default!;
+-        return false;
+-    }
+-
+-    public bool Store(CatalogItem item, CatalogPlayability playability, int generation)
+-    {
+-        if (playability.Status is not (CatalogPlayabilityStatus.Available or CatalogPlayabilityStatus.Unavailable))
+-        {
+-            return false;
+-        }
+-
+-        lock (_sync)
+-        {
+-            if (generation != _generation)
+-            {
+-                return false;
+-            }
+-
+-            _entries[GetKey(item)] = playability;
+-            return true;
+-        }
+-    }
+-
+-    public void Invalidate()
+-    {
+-        lock (_sync)
+-        {
+-            _entries.Clear();
+-            unchecked
+-            {
+-                _generation++;
+-            }
+-        }
+-    }
+-
+-    private static string GetKey(CatalogItem item)
+-    {
+-        var source = item.Source.Trim().ToLowerInvariant();
+-        if (!string.IsNullOrWhiteSpace(item.Id))
+-        {
+-            return $"{source}:id:{item.Id.Trim()}";
+-        }
+-
+-        return $"{source}:title:{CatalogTitleMatcher.Normalize(item.Title)}:year:{CatalogTitleMatcher.Normalize(item.Year)}";
+-    }
+-}
+-
+ /// <summary>源站分类（AppleCMS ac=list 的 class 项）。</summary>
+ public sealed record VideoSourceCategory(string Id, string Name);
+ 
+diff --git a/desktop/OrionTV.Desktop.Core/CatalogService.cs b/desktop/OrionTV.Desktop.Core/CatalogService.cs
+index 95cfcc4..ce86c6d 100644
+--- a/desktop/OrionTV.Desktop.Core/CatalogService.cs
++++ b/desktop/OrionTV.Desktop.Core/CatalogService.cs
+@@ -1,4 +1,6 @@
+-namespace OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.VodSources;
++
++namespace OrionTV.Desktop.Core.Catalog;
+ 
+ /// <summary>首页/搜索/收藏/历史网格统一展示项。</summary>
+ public sealed record CatalogItem(
+diff --git a/desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs b/desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs
+index d8a2855..7b09e02 100644
+--- a/desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs
++++ b/desktop/OrionTV.Desktop.Core/ChannelHealthProbe.cs
+@@ -2,7 +2,7 @@ using System.Diagnostics;
+ using System.Globalization;
+ using System.Text.RegularExpressions;
+ 
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.StreamHealth;
+ 
+ /// <summary>直播频道流畅度等级（对齐 RN 端 channelHealth.ts）。</summary>
+ public enum ChannelHealth
+diff --git a/desktop/OrionTV.Desktop.Core/DoubanClient.cs b/desktop/OrionTV.Desktop.Core/DoubanClient.cs
+index d482d01..9e882e5 100644
+--- a/desktop/OrionTV.Desktop.Core/DoubanClient.cs
++++ b/desktop/OrionTV.Desktop.Core/DoubanClient.cs
+@@ -1,6 +1,14 @@
+ using System.Text.Json;
+ 
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.Catalog;
++
++/// <summary>豆瓣条目（首页分类网格数据）。</summary>
++public sealed record DoubanItem(
++    string Id,
++    string Title,
++    string Poster,
++    string? Rate = null,
++    string? Year = null);
+ 
+ /// <summary>
+ /// 移植自安卓 services/api.ts 的豆瓣移动端公开接口客户端。
+diff --git a/desktop/OrionTV.Desktop.Core/HomeCategoryMatcher.cs b/desktop/OrionTV.Desktop.Core/HomeCategoryMatcher.cs
+index 976bbe3..67a9140 100644
+--- a/desktop/OrionTV.Desktop.Core/HomeCategoryMatcher.cs
++++ b/desktop/OrionTV.Desktop.Core/HomeCategoryMatcher.cs
+@@ -1,4 +1,4 @@
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.VodSources;
+ 
+ public sealed record HomeCategoryMatch(VideoSourceCategory Category, string Candidate, bool UsedTypeFallback);
+ 
+diff --git a/desktop/OrionTV.Desktop.Core/IVodSourceClient.cs b/desktop/OrionTV.Desktop.Core/IVodSourceClient.cs
+index dcdc05a..ed3a359 100644
+--- a/desktop/OrionTV.Desktop.Core/IVodSourceClient.cs
++++ b/desktop/OrionTV.Desktop.Core/IVodSourceClient.cs
+@@ -1,4 +1,4 @@
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.VodSources;
+ 
+ /// <summary>点播源客户端统一接口（按 VideoSource.Protocol 路由）。</summary>
+ public interface IVodSourceClient
+diff --git a/desktop/OrionTV.Desktop.Core/LocalMediaLibrary.cs b/desktop/OrionTV.Desktop.Core/LocalMediaLibrary.cs
+index a21fe08..c351904 100644
+--- a/desktop/OrionTV.Desktop.Core/LocalMediaLibrary.cs
++++ b/desktop/OrionTV.Desktop.Core/LocalMediaLibrary.cs
+@@ -1,6 +1,6 @@
+ using System.Text.RegularExpressions;
+ 
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.Library;
+ 
+ public sealed record LocalMediaEpisode(
+     string Path,
+diff --git a/desktop/OrionTV.Desktop.Core/LocalStore.cs b/desktop/OrionTV.Desktop.Core/LocalStore.cs
+index 99a8cc0..aa30c02 100644
+--- a/desktop/OrionTV.Desktop.Core/LocalStore.cs
++++ b/desktop/OrionTV.Desktop.Core/LocalStore.cs
+@@ -1,6 +1,6 @@
+ using System.Text.Json;
+ 
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.Library;
+ 
+ /// <summary>键值 JSON 文件存储基类（线程安全的简单实现）。</summary>
+ public abstract class JsonDictionaryStore<T>
+diff --git a/desktop/OrionTV.Desktop.Core/MacCmsJsonClient.cs b/desktop/OrionTV.Desktop.Core/MacCmsJsonClient.cs
+index ec0ff27..ce5ccf0 100644
+--- a/desktop/OrionTV.Desktop.Core/MacCmsJsonClient.cs
++++ b/desktop/OrionTV.Desktop.Core/MacCmsJsonClient.cs
+@@ -1,7 +1,7 @@
+ using System.Globalization;
+ using System.Text.Json;
+ 
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.VodSources;
+ 
+ /// <summary>
+ /// MacCMS 类 JSON 方言：字段仍是 vod_*，但 ac 参数可配置。
+diff --git a/desktop/OrionTV.Desktop.Core/MacCmsXmlClient.cs b/desktop/OrionTV.Desktop.Core/MacCmsXmlClient.cs
+index 9f57ae9..cc47b27 100644
+--- a/desktop/OrionTV.Desktop.Core/MacCmsXmlClient.cs
++++ b/desktop/OrionTV.Desktop.Core/MacCmsXmlClient.cs
+@@ -1,7 +1,7 @@
+ using System.Globalization;
+ using System.Xml.Linq;
+ 
+-namespace OrionTV.Desktop.Core;
++namespace OrionTV.Desktop.Core.VodSources;
+ 
+ /// <summary>
+ /// MacCMS 经典 XML 输出（at=xml）。将 &lt;class&gt;/&lt;list&gt;/&lt;video&gt;/&lt;dl&gt;&lt;dd&gt; 映射为统一 SearchResult。
+diff --git a/desktop/OrionTV.Desktop.Core/Models.cs b/desktop/OrionTV.Desktop.Core/Models.cs
+index 319e6bc..2261989 100644
+--- a/desktop/OrionTV.Desktop.Core/Models.cs
++++ b/desktop/OrionTV.Desktop.Core/Models.cs
+@@ -1,5 +1,3 @@
+-using System.Text.Json.Serialization;
+-
+ namespace OrionTV.Desktop.Core;
+ 
+ /// <summary>
+@@ -122,51 +120,3 @@ public sealed record VideoDetail(
+     string? Area = null,
+     string? Director = null,
+     string? Actor = null);
+-
+-public sealed class AppleCmsVodItem
+-{
+-    [JsonPropertyName("vod_id")]
+-    public object? VodId { get; set; }
+-
+-    [JsonPropertyName("vod_name")]
+-    public string? VodName { get; set; }
+-
+-    [JsonPropertyName("vod_pic")]
+-    public string? VodPic { get; set; }
+-
+-    [JsonPropertyName("vod_play_url")]
+-    public string? VodPlayUrl { get; set; }
+-
+-    [JsonPropertyName("vod_play_from")]
+-    public string? VodPlayFrom { get; set; }
+-
+-    [JsonPropertyName("vod_year")]
+-    public string? VodYear { get; set; }
+-
+-    [JsonPropertyName("vod_blurb")]
+-    public string? VodBlurb { get; set; }
+-
+-    [JsonPropertyName("vod_content")]
+-    public string? VodContent { get; set; }
+-
+-    [JsonPropertyName("vod_remarks")]
+-    public string? VodRemarks { get; set; }
+-
+-    [JsonPropertyName("type_name")]
+-    public string? TypeName { get; set; }
+-
+-    [JsonPropertyName("type_id")]
+-    public object? TypeId { get; set; }
+-
+-    [JsonPropertyName("vod_class")]
+-    public string? VodClass { get; set; }
+-
+-    [JsonPropertyName("vod_area")]
+-    public string? VodArea { get; set; }
+-
+-    [JsonPropertyName("vod_actor")]
+-    public string? VodActor { get; set; }
+-
+-    [JsonPropertyName("vod_director")]
+-    public string? VodDirector { get; set; }
+-}
+diff --git a/desktop/OrionTV.Desktop.Core/SearchResultSources.cs b/desktop/OrionTV.Desktop.Core/SearchResultSources.cs
+new file mode 100644
+index 0000000..5c7e28d
+--- /dev/null
++++ b/desktop/OrionTV.Desktop.Core/SearchResultSources.cs
+@@ -0,0 +1,33 @@
++namespace OrionTV.Desktop.Core;
++
++public static class SearchResultSources
++{
++    public static string KeyOf(SearchResult result) => KeyOf(result.Source, result.PlaybackSourceKey);
++
++    public static string KeyOf(string source, string? playbackSourceKey) =>
++        $"{source}\u001f{playbackSourceKey ?? ""}";
++
++    public static string SelectionKeyOf(SearchResult result) =>
++        SelectionKeyOf(result.Source, result.Id, result.PlaybackSourceKey);
++
++    public static string SelectionKeyOf(string source, string id, string? playbackSourceKey) =>
++        $"{source}\u001f{id}\u001f{playbackSourceKey ?? ""}";
++
++    public static IReadOnlyList<SearchResult> Expand(SearchResult result)
++    {
++        if (result.PlaybackSources is not { Count: > 0 })
++        {
++            return [result];
++        }
++
++        return result.PlaybackSources
++            .Select(playbackSource => result with
++            {
++                Episodes = playbackSource.Episodes,
++                EpisodeLabels = playbackSource.EpisodeLabels,
++                SourceName = $"{result.SourceName} · {playbackSource.Name}",
++                PlaybackSourceKey = playbackSource.Key,
++            })
++            .ToList();
++    }
++}
+diff --git a/desktop/OrionTV.Desktop.Core/VodSources/AppleCmsVodItem.cs b/desktop/OrionTV.Desktop.Core/VodSources/AppleCmsVodItem.cs
+new file mode 100644
+index 0000000..c94e611
+--- /dev/null
++++ b/desktop/OrionTV.Desktop.Core/VodSources/AppleCmsVodItem.cs
+@@ -0,0 +1,51 @@
++using System.Text.Json.Serialization;
++
++namespace OrionTV.Desktop.Core.VodSources;
++
++public sealed class AppleCmsVodItem
++{
++    [JsonPropertyName("vod_id")]
++    public object? VodId { get; set; }
++
++    [JsonPropertyName("vod_name")]
++    public string? VodName { get; set; }
++
++    [JsonPropertyName("vod_pic")]
++    public string? VodPic { get; set; }
++
++    [JsonPropertyName("vod_play_url")]
++    public string? VodPlayUrl { get; set; }
++
++    [JsonPropertyName("vod_play_from")]
++    public string? VodPlayFrom { get; set; }
++
++    [JsonPropertyName("vod_year")]
++    public string? VodYear { get; set; }
++
++    [JsonPropertyName("vod_blurb")]
++    public string? VodBlurb { get; set; }
++
++    [JsonPropertyName("vod_content")]
++    public string? VodContent { get; set; }
++
++    [JsonPropertyName("vod_remarks")]
++    public string? VodRemarks { get; set; }
++
++    [JsonPropertyName("type_name")]
++    public string? TypeName { get; set; }
++
++    [JsonPropertyName("type_id")]
++    public object? TypeId { get; set; }
++
++    [JsonPropertyName("vod_class")]
++    public string? VodClass { get; set; }
++
++    [JsonPropertyName("vod_area")]
++    public string? VodArea { get; set; }
++
++    [JsonPropertyName("vod_actor")]
++    public string? VodActor { get; set; }
++
++    [JsonPropertyName("vod_director")]
++    public string? VodDirector { get; set; }
++}
+diff --git a/desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs b/desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs
+index a522f60..b40879e 100644
+--- a/desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/AiCliLauncherTests.cs
+@@ -1,9 +1,9 @@
+ using System.Diagnostics;
+ using System.Text;
+ using System.Xml.Linq;
+-using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.AiImport;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class AiCliLauncherTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs b/desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs
+index 6be474e..8919615 100644
+--- a/desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/AppleCmsServiceTests.cs
+@@ -1,4 +1,6 @@
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
++using OrionTV.Desktop.Core.VodSources;
+ using System.Net;
+ 
+ namespace OrionTV.Desktop.Tests;
+diff --git a/desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs b/desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs
+index 9082a95..7285df3 100644
+--- a/desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/ChannelHealthScoringTests.cs
+@@ -1,4 +1,5 @@
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.StreamHealth;
+ 
+ namespace OrionTV.Desktop.Tests;
+ 
+diff --git a/desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs b/desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs
+index 6fb2608..c3fc451 100644
+--- a/desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/DesktopSettingsTests.cs
+@@ -1,5 +1,6 @@
+ using System.Text.Json;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Library;
+ 
+ namespace OrionTV.Desktop.Tests;
+ 
+@@ -11,7 +12,7 @@ public class DesktopSettingsTests
+         var settings = new DesktopSettings(
+             SubscriptionUrl: "https://subscription.example/config.json");
+ 
+-        var urls = OrionTV.Desktop.App.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);
++        var urls = OrionTV.Desktop.App.Hosting.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);
+ 
+         Assert.Equal(new[] { "https://subscription.example/config.json" }, urls.ToArray());
+     }
+@@ -21,7 +22,7 @@ public class DesktopSettingsTests
+     {
+         var settings = new DesktopSettings(SubscriptionUrl: "");
+ 
+-        var urls = OrionTV.Desktop.App.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);
++        var urls = OrionTV.Desktop.App.Hosting.AppServices.BuildSubscriptionUrlList(settings.SubscriptionUrl);
+ 
+         Assert.Empty(urls);
+     }
+diff --git a/desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs b/desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs
+index caae9a5..34b43ab 100644
+--- a/desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/DesktopUpdateServiceTests.cs
+@@ -2,9 +2,9 @@ using System.IO.Compression;
+ using System.Net;
+ using System.Security.Cryptography;
+ using System.Text;
+-using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.Updates;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class DesktopUpdateServiceTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs b/desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs
+index ce728e6..85b7c99 100644
+--- a/desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/HomeCategoryMatcherTests.cs
+@@ -1,4 +1,5 @@
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.VodSources;
+ 
+ namespace OrionTV.Desktop.Tests;
+ 
+diff --git a/desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs b/desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs
+index bfb9ea8..382943a 100644
+--- a/desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/LocalCachePlaybackCatalogTests.cs
+@@ -1,6 +1,7 @@
+-using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.CacheCatalog;
++using OrionTV.Desktop.App.Caching;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class LocalCachePlaybackCatalogTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs b/desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs
+index 437b540..c6ead44 100644
+--- a/desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/LocalMediaLibraryTests.cs
+@@ -1,4 +1,5 @@
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Library;
+ 
+ namespace OrionTV.Desktop.Tests;
+ 
+diff --git a/desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs b/desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs
+index 172e24a..f8218ea 100644
+--- a/desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/MpvLocalEngineTests.cs
+@@ -2,7 +2,7 @@ using OrionTV.Desktop.App.LocalPlayback;
+ using System.Text.Json;
+ using System.Windows.Threading;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class MpvLocalEngineTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs b/desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs
+index 4a1091a..4de70d2 100644
+--- a/desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/PlayRecordHistoryTests.cs
+@@ -1,5 +1,6 @@
+ using System.Text.Json;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Library;
+ 
+ namespace OrionTV.Desktop.Tests;
+ 
+diff --git a/desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs b/desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs
+index 48f449a..972df5e 100644
+--- a/desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/PlaybackResumePolicyTests.cs
+@@ -1,8 +1,9 @@
+-using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.Hosting;
+ using OrionTV.Desktop.App.Views;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Library;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class PlaybackResumePolicyTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs b/desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs
+index 37f3d31..a4c75d5 100644
+--- a/desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/PlayerNavigationSurfaceTests.cs
+@@ -3,9 +3,11 @@ using System.Runtime.ExceptionServices;
+ using System.Windows;
+ using System.Windows.Threading;
+ using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.Hosting;
++using OrionTV.Desktop.App.Playback;
+ using OrionTV.Desktop.App.Views;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ [CollectionDefinition(Name, DisableParallelization = true)]
+ public sealed class WpfNavigationCollection
+diff --git a/desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs b/desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs
+index bc0eeab..ab2755e 100644
+--- a/desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/PlayerShortcutTests.cs
+@@ -1,7 +1,7 @@
+ using System.Windows.Input;
+ using OrionTV.Desktop.App.Views;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class PlayerShortcutTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs b/desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs
+index 9d9ce0d..92681d2 100644
+--- a/desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/VodCacheLookupTests.cs
+@@ -1,6 +1,7 @@
+-using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.CacheCatalog;
++using OrionTV.Desktop.App.Caching;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class VodCacheLookupTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs b/desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs
+index 6459db5..948c6d0 100644
+--- a/desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/VodCacheServiceTests.cs
+@@ -4,9 +4,9 @@ using System.Net.Http.Headers;
+ using System.Net.Sockets;
+ using System.Text;
+ using System.Text.Json;
+-using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.Caching;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public sealed class VodCacheServiceTests
+ {
+diff --git a/desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs b/desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs
+index 7783bfa..a8d96aa 100644
+--- a/desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/VodProtocolTests.cs
+@@ -1,6 +1,7 @@
+ using System.Net;
+ using System.Text;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.VodSources;
+ 
+ namespace OrionTV.Desktop.Tests;
+ 
+diff --git a/desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs b/desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs
+index df92d7a..11d77a7 100644
+--- a/desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs
++++ b/desktop/OrionTV.Desktop.Tests/VodSourceHealthProbeTests.cs
+@@ -1,7 +1,9 @@
+-using OrionTV.Desktop.App;
++using OrionTV.Desktop.App.SourceHealth;
+ using OrionTV.Desktop.Core;
++using OrionTV.Desktop.Core.Catalog;
++using OrionTV.Desktop.Core.StreamHealth;
+ 
+-namespace OrionTV.Desktop.Tests;
++namespace OrionTV.Desktop.Tests.App;
+ 
+ public class VodSourceHealthProbeTests
+ {
