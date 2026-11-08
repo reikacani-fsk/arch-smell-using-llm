@@ -17,8 +17,17 @@ and commit there. Nothing in the repo hints at the smells.
 bash scripts/analyze.sh rkacani/bookstore       # Git Bash on Windows: clone into repos/ and run Designite (it is in data/screened.tsv)
 python scripts/explain.py rkacani/bookstore     # the LLM explains each smell Designite found
 python scripts/verify.py rkacani/bookstore      # Windows, optional: Designite's verdict on the LLM's commits
-python testbed/score.py                         # compare with ground_truth.json -> output/testbed/score.csv
+python scripts/refactor.py rkacani/bookstore    # Windows, RQ3: the LLM refactors each smell, checked with dotnet and Designite
+python testbed/score.py                         # compare with ground_truth.json -> output/testbed/score.csv (RQ2)
+                                                #   and output/testbed/refactoring_score.csv (RQ3)
 ```
+
+For RQ3, each smell in `ground_truth.json` has a `refactoring`: the refactoring
+types that remove it (from the catalog in `prompts/refactor_smell.md`) and the
+intended fix. `refactoring_score.csv` has one row per variant and smell with
+`type_match` (`yes` if the LLM applied one of the expected types), refactor.py's
+`verdict`, and the LLM's and the intended refactoring to compare by hand. The
+bookstore has no test project, so `tests_pass` is `no_tests` there.
 
 `score.py` matches each smell Designite found to the ground truth. For each
 smell it writes one row with the expected commit, the commit the LLM names in

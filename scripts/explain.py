@@ -104,6 +104,13 @@ def class_files(repo_dir, project_files):
     return result
 
 
+def smell_files(declared, d):
+    """The repo-relative paths of the .cs files declaring the participating classes of Designite row `d`."""
+    classes = [c.strip().split(".")[-1] for c in d["Participating classes"].split(";") if c.strip()]
+    in_project = declared.get(d["Project"], {})
+    return sorted(set().union(*(in_project.get(c, set()) for c in classes)))
+
+
 def revision(repo_dir, commit, rev):
     """The full hash of `rev` if it is the analyzed `commit` or one of its ancestors; ValueError otherwise."""
     if not rev or rev.startswith("-"):
@@ -179,15 +186,17 @@ def first_message(project, smells, commit):
     return "\n".join(parts)
 
 
-def explore(client, text, repo_dir, commit):
-    """Runs one agent session. Returns (the submitted explanations, the steps taken, the summed token usage)."""
+def explore(client, text, system, tools, run, submit, nudge, max_steps=MAX_STEPS):
+    """Runs one agent session: `run(name, input)` executes a tool call and returns its result. It ends when the model
+    calls the tool `submit`; `nudge` asks for that if the model stops without it.
+    Returns (the input of the `submit` call, the steps taken, the summed token usage)."""
     messages, steps, usage = [{"role": "user", "content": text}], [], Counter()
-    for _ in range(MAX_STEPS):
+    for _ in range(max_steps):
         with client.messages.stream(
             model=MODEL,
             max_tokens=64000,
-            system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
-            tools=TOOLS,
+            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            tools=tools,
             messages=messages,
             thinking={"type": "adaptive"},
             output_config={"effort": EFFORT},
@@ -202,16 +211,16 @@ def explore(client, text, repo_dir, commit):
         if not calls:
             if message.stop_reason != "end_turn":
                 raise RuntimeError(f"model stopped with '{message.stop_reason}'")
-            messages.append({"role": "user", "content": "Submit your explanations of all smells with submit_explanations."})
+            messages.append({"role": "user", "content": nudge})
             continue
         results = []
         for call in calls:
-            if call.name == "submit_explanations":
+            if call.name == submit:
                 step["calls"].append({"tool": call.name})
-                return call.input["explanations"], steps, dict(usage)
+                return call.input, steps, dict(usage)
             try:
-                result, error = run_tool(repo_dir, commit, call.name, call.input), False
-            except ValueError as e:
+                result, error = run(call.name, call.input), False
+            except (ValueError, OSError) as e:
                 result, error = f"Error: {e}", True
             except subprocess.CalledProcessError as e:
                 result, error = f"Error: {e.stderr.strip() or 'git failed'}", True
@@ -221,7 +230,7 @@ def explore(client, text, repo_dir, commit):
             step["calls"].append({"tool": call.name, "input": call.input, "result_chars": len(result), "error": error})
             results.append({"type": "tool_result", "tool_use_id": call.id, "content": result, "is_error": error})
         messages.append({"role": "user", "content": results})
-    raise RuntimeError(f"no explanations submitted after {MAX_STEPS} steps")
+    raise RuntimeError(f"nothing submitted after {max_steps} steps")
 
 
 def changing_commits(repo_dir, commit, files):
@@ -291,9 +300,7 @@ def main(selected, dry_run):
         # the smells of each project, with the files declaring their participating classes
         groups = {}
         for d in sorted(designite(name)[0], key=lambda d: (d["Project"], d["Namespace"], d["Smell"])):
-            classes = [c.strip().split(".")[-1] for c in d["Participating classes"].split(";") if c.strip()]
-            in_project = declared.get(d["Project"], {})
-            files = sorted(set().union(*(in_project.get(c, set()) for c in classes)))
+            files = smell_files(declared, d)
             if not files:
                 print(f"    {d['Smell']} in {d['Namespace']}: no files found for its classes, skipped")
                 continue
@@ -313,13 +320,15 @@ def main(selected, dry_run):
                 print(label)
                 continue
             try:
-                answers, steps, usage = explore(client, text, repo_dir, commit)
+                submitted, steps, usage = explore(
+                    client, text, SYSTEM, TOOLS, lambda tool_name, args: run_tool(repo_dir, commit, tool_name, args),
+                    "submit_explanations", "Submit your explanations of all smells with submit_explanations.")
             except (anthropic.APIError, RuntimeError) as e:
                 print(f"{label}: LLM failed: {e}")
                 for s in smells:
                     s["error"] = str(e)
                 continue
-            by_id = {a["smell_id"]: a for a in answers}
+            by_id = {a["smell_id"]: a for a in submitted["explanations"]}
             for i, s in enumerate(smells, 1):
                 if i in by_id:
                     smell_commits = {sha for sha, files in changed.items() if files & set(s["files"])}

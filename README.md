@@ -12,7 +12,10 @@ scripts/
                         run Designite on them (all or chosen)       output/designite/
   llm_analyze.py     3. ask the LLM for the same smells          -> output/llm/
   compare.py         4. put both results side by side            -> output/comparison/
-prompts/             system prompt with the smell definitions given to the LLM
+  explain.py         RQ2: explain how each smell emerged         -> output/explanations/
+  verify.py          RQ2: check the emergence commits            -> output/verification/
+  refactor.py        RQ3: refactor each smell and check it       -> output/refactoring/
+prompts/             system prompts: smell definitions (arch_smells.md), RQ2 (explain_smell.md), RQ3 (refactor_smell.md)
 data/                screening results and data/subjects.csv (repo, url, tag, commit)
 repos/               cloned repos (not committed; re-create with step 2)
 tools/               third-party tools, e.g. tools/designite/ (not committed)
@@ -222,3 +225,55 @@ row per smell:
 | `present_before` | smell found at its parent: `yes`, `no`, `no parent`, or empty if not analyzed                             |
 | `verdict`        | `confirmed`, `too_early`, `too_late`, `not_reproduced` (Designite does not find the smell at the analyzed commit in this run), `unverifiable` (Designite failed on `llm_commit` or its parent) or `no_commit` (no answer, or a commit outside the analyzed history) |
 | `actual_commit`  | commit the smell last emerged in, if known: `llm_commit` when `confirmed`, the oldest commit of the unbroken run when `too_early`; empty otherwise |
+
+## Refactoring the smells (RQ3)
+
+```bash
+python scripts/refactor.py --dry-run zo1223/OpaiTV          # only write the first message of each session, no LLM calls
+python scripts/refactor.py zo1223/OpaiTV                    # Windows, like verify.py: one agent session per smell
+python scripts/refactor.py --with-explanation zo1223/OpaiTV # the same, with how the smell emerged (RQ2)
+```
+
+For every smell Designite found, `refactor.py` lets an LLM agent refactor the
+code to remove it, then checks the result. For each smell:
+
+1. The agent works in a temporary git worktree at the analyzed commit. It gets
+   the smell (Designite's finding, participating classes and their files), its
+   definition and what a component and a dependency are (from
+   `prompts/arch_smells.md`). With `--with-explanation` it also gets the RQ2
+   explanation of how the smell emerged (`output/explanations/`), so the two
+   variants show whether that context helps. The system prompt is
+   `prompts/refactor_smell.md`: goals, method, a catalog of refactorings and rules
+   (keep behaviour and tests, remove dependencies instead of hiding them).
+2. The agent reads and edits the code with `list_files`, `read_file`, `grep`,
+   `edit_file`, `write_file` and `delete_file`, and can call `build` and, if the
+   solution has a test project, `run_tests`. It cannot run Designite. It ends
+   with `submit_refactoring`: the refactorings applied (from the catalog), a
+   summary, the steps and a rationale. A session fails after 100 steps.
+3. Its changes are committed in the worktree, saved as a patch, and checked:
+
+| # | column          | check                                                                                     |
+|---|-----------------|-------------------------------------------------------------------------------------------|
+| 1 | `builds`        | `dotnet build` of the solution succeeds                                                    |
+| 2 | `tests_pass`    | `dotnet test` succeeds; `no_tests` if the solution has no test project, `failing_before` if the tests already fail at the analyzed commit |
+| 3 | `smell_removed` | Designite no longer finds the smell (the same smell as in `verify.py`)                     |
+| 4 | `new_smells`    | smells Designite finds after the refactoring but not at the analyzed commit                |
+
+Repos that do not build or that Designite fails on at the analyzed commit are
+skipped. The `verdict` is the first failed check: `broken_build`, `tests_fail`,
+`unverifiable` (Designite failed on the refactored code), `not_fixed`,
+`introduced_smells`, otherwise `fixed`. It is `not_reproduced` if Designite does not
+find the smell at the analyzed commit in this run (not refactored), and
+`no_answer` if the LLM submitted nothing.
+
+Results go to `output/refactoring/<variant>/<owner>_<repo>/` (variant `code`, or
+`explanation`): `refactoring.csv` (one row per smell: `id`, smell, project,
+namespace, description, `refactoring_type`, the four checks and `verdict`),
+`refactorings.json` (per smell: finding, answer, checks, every step of the
+session and token usage), `refactorings.md` (readable), `patches/<id>.patch`
+(the code changes), `prompts/<id>.md` (the first message) and `designite/`
+(Designite's results per commit, cached).
+
+For the testbed, `testbed/ground_truth.json` records for each smell the
+refactorings that remove it and the intended fix. `testbed/score.py` compares
+them with the LLM's refactorings in `output/testbed/refactoring_score.csv`.

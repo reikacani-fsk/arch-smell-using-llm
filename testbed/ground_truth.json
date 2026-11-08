@@ -2,7 +2,7 @@
   "repo": "rkacani/bookstore",
   "url": "https://github.com/rkacani/bookstore",
   "project": "Bookstore",
-  "note": "Steps number the commits of the repo, oldest first (see commits). present: step ranges in which Designite finds the smell. emerged_in: the step in which the smell last emerged (the start of the run that lasts until the analyzed, last commit), which is what explain.py asks for. first_emerged_in: the step in which it first appeared, if the smell was removed in between and came back. how and why: the explanation, for reading.",
+  "note": "Steps number the commits of the repo, oldest first (see commits). present: step ranges in which Designite finds the smell. emerged_in: the step in which the smell last emerged (the start of the run that lasts until the analyzed, last commit), which is what explain.py asks for. first_emerged_in: the step in which it first appeared, if the smell was removed in between and came back. how and why: the explanation, for reading. refactoring: the refactorings that remove the smell (types from the catalog in prompts/refactor_smell.md; the LLM's answer counts as matching if it names one of them) and the intended fix, which refactor.py's answers are compared with (testbed/score.py).",
   "smells": [
     {
       "id": "cycle-orders-billing",
@@ -24,7 +24,14 @@
       "emerged_in": 20,
       "first_emerged_in": 6,
       "how": "Orders has depended on Billing since step 3 (CheckoutService calls InvoiceService). In step 6 InvoiceService.CreateFor starts taking an Order and reading its OrderLines, so Billing depends on Orders and the cycle appears. Step 15 removes it again: InvoiceService gets plain values. In step 20 the new Billing.PaymentService loads the Order through OrderRepository to mark it paid, which closes the cycle again.",
-      "why": "Billing and Orders can no longer be built, tested or changed in isolation: a change to the order model can break settling invoices, and a change to invoicing can break checkout."
+      "why": "Billing and Orders can no longer be built, tested or changed in isolation: a change to the order model can break settling invoices, and a change to invoicing can break checkout.",
+      "refactoring": {
+        "types": [
+          "Invert Dependency",
+          "Move Method"
+        ],
+        "fix": "Remove Billing's dependency on Orders, which PaymentService.Settle creates by loading the Order through OrderRepository, summing its OrderLines and setting OrderStatus.Paid. Either Billing owns an interface for marking an order paid (e.g. IOrderPayments.MarkPaid(int orderId, decimal amount)) that Orders implements and that is passed to PaymentService, or the order update moves into Orders (e.g. an Orders class that calls PaymentService.Settle and then marks the order paid), so that Billing only settles the invoice. Orders -> Billing stays, Billing -> Orders is gone, and settling an invoice still marks a fully paid order as paid."
+      }
     },
     {
       "id": "unstable-orders",
@@ -46,7 +53,14 @@
       "emerged_in": 20,
       "first_emerged_in": 6,
       "how": "It comes with the cycle and emerges through Billing's files. Orders has depended on Billing since step 3; then Billing depended on nothing and was maximally stable. When Billing starts depending on Orders (InvoiceService in step 6; PaymentService in step 20, which loads the order and its lines), Billing refers to several Orders classes but is used by few classes, so it becomes less stable than Orders, which shipping, the partner API and the admin commands use. Step 15 removes Billing's dependency and with it the smell. No file of Orders changed in step 20.",
-      "why": "Orders, which much of the shop relies on, depends on Billing, which now has to change along with the order model, so changes can ripple from Orders into Billing and back."
+      "why": "Orders, which much of the shop relies on, depends on Billing, which now has to change along with the order model, so changes can ripple from Orders into Billing and back.",
+      "refactoring": {
+        "types": [
+          "Invert Dependency",
+          "Move Method"
+        ],
+        "fix": "The same change as for cycle-orders-billing: once Billing no longer depends on Orders, Billing depends on nothing and is maximally stable again, so Orders no longer depends on a less stable component."
+      }
     },
     {
       "id": "unstable-customers",
@@ -63,7 +77,14 @@
       ],
       "emerged_in": 13,
       "how": "Customers has depended on Notifications since step 8 (CustomerService sends the welcome email through EmailSender); then Notifications depended on nothing and was maximally stable. In step 13 Notifications gets RecommendationBlock, which reads books from Catalog. Notifications now has an outgoing dependency and becomes less stable than Customers. No file of Customers changed in that commit.",
-      "why": "Customers, which Orders, Shipping, Admin and later Reporting rely on, depends on Notifications, which now changes whenever the catalog changes."
+      "why": "Customers, which Orders, Shipping, Admin and later Reporting rely on, depends on Notifications, which now changes whenever the catalog changes.",
+      "refactoring": {
+        "types": [
+          "Invert Dependency",
+          "Move Class"
+        ],
+        "fix": "Remove Notifications' dependency on Catalog, which RecommendationBlock creates. Notifications owns an abstraction for the email footer (e.g. an interface IEmailFooter with Render(int count), the type of EmailSender.Recommendations), and the recommendations are implemented outside Notifications (e.g. RecommendationBlock moves to Catalog and implements IEmailFooter). Notifications then depends on nothing and is maximally stable again, and emails still end with the recommended books."
+      }
     },
     {
       "id": "god-admin",
@@ -77,7 +98,14 @@
       ],
       "emerged_in": 17,
       "how": "Admin is created in step 9 with 17 classes (one command class per action), grows to 25 classes in step 14 and to 32 in step 17, more than the 30 classes Designite allows.",
-      "why": "Every new admin action adds another class to the same namespace, which now mixes commands for the catalog, customers, orders, newsletters, shipments and invoices."
+      "why": "Every new admin action adds another class to the same namespace, which now mixes commands for the catalog, customers, orders, newsletters, shipments and invoices.",
+      "refactoring": {
+        "types": [
+          "Split Component",
+          "Extract Component"
+        ],
+        "fix": "Split Bookstore.Admin by area: AdminCommand and AdminConsole stay in Bookstore.Admin, and the commands of each area move into their own namespace (e.g. Bookstore.Admin.Catalog, .Customers, .Orders, .Newsletters, .Shipping and .Invoices, one per *Commands.cs file). Each component has one responsibility and far fewer than 30 classes, and every command is still registered and run through AdminConsole as before."
+      }
     },
     {
       "id": "fc-shipping",
@@ -91,7 +119,13 @@
       ],
       "emerged_in": 18,
       "how": "Up to step 17 all classes of Shipping are connected through Shipment and ShipmentService; gift wrapping (step 11) is attached to Shipment. Step 18 adds returns (ReturnRequest, ReturnDesk) and pickup points (PickupPoint, PickupPointDirectory) as two groups that use neither each other nor the shipment classes: 3 groups in 10 classes, LCC 0.3 > 0.2.",
-      "why": "Shipping now holds three unrelated features, so changes to returns or pickup points touch the same component as shipping itself, and none of them can be reused on its own."
+      "why": "Shipping now holds three unrelated features, so changes to returns or pickup points touch the same component as shipping itself, and none of them can be reused on its own.",
+      "refactoring": {
+        "types": [
+          "Extract Component"
+        ],
+        "fix": "Move the two features that are not shipping out of Bookstore.Shipping into their own namespaces: ReturnRequest and ReturnDesk into e.g. Bookstore.Returns, PickupPoint and PickupPointDirectory into e.g. Bookstore.PickupPoints. Shipping keeps Shipment, ShipmentService and the classes they use, which form one connected group."
+      }
     },
     {
       "id": "sf-orders-pricing",
@@ -109,7 +143,14 @@
       ],
       "emerged_in": 19,
       "how": "Pricing is split between Catalog (PriceList) and Customers (LoyaltyProgram). Step 12 adds OrderService.QuoteFor, which combines both, once. Step 19 adds CartService.PreviewTotal, which combines them again: the concern is now realized in two places and Designite reports it (one method alone is not enough).",
-      "why": "Computing a discounted price needs Catalog and Customers together, and the rule is repeated in Orders, so a change to discounts has to be made in several places."
+      "why": "Computing a discounted price needs Catalog and Customers together, and the rule is repeated in Orders, so a change to discounts has to be made in several places.",
+      "refactoring": {
+        "types": [
+          "Extract Class",
+          "Consolidate Duplicate Logic"
+        ],
+        "fix": "Implement the discounted-price rule once: a new class (e.g. Orders.PriceCalculator with DiscountedTotal(customerId, lines)) combines PriceList and LoyaltyProgram, and OrderService.QuoteFor and CartService.PreviewTotal both call it instead of each accessing Catalog and Customers. Only one method then accesses both namespaces, and both totals are computed as before."
+      }
     },
     {
       "id": "ai-integration",
@@ -123,7 +164,13 @@
       ],
       "emerged_in": 16,
       "how": "Integration is created in step 10 with an explicit API: PartnerApi.ExportOrders, ImportOrder and CancelOrder. Step 16 makes them private and adds PartnerApi.Handle(string command, object payload) as the only public method of the component's 5 classes.",
-      "why": "Clients of PartnerApi can no longer see which operations exist or what payload each needs; a wrong command or payload type only fails at run time."
+      "why": "Clients of PartnerApi can no longer see which operations exist or what payload each needs; a wrong command or payload type only fails at run time.",
+      "refactoring": {
+        "types": [
+          "Make Interface Explicit"
+        ],
+        "fix": "Make PartnerApi's operations public again with typed signatures (ExportOrders(), ImportOrder(PartnerOrder), CancelOrder(int)) and remove Handle(string command, object payload). Its only caller, Reporting.PartnerReport, calls ExportOrders() instead. Each operation is still logged as before. Clients see the operations, and the compiler checks their arguments."
+      }
     },
     {
       "id": "dense-structure",
@@ -138,7 +185,13 @@
       ],
       "emerged_in": 21,
       "how": "The dependencies between the namespaces grow step by step (17 dependencies between 8 namespaces after step 20, average degree 4.25). Step 21 adds Reporting, which depends on all 8 other namespaces: 25 dependencies between 9 namespaces, average degree 5.6 > 5.",
-      "why": "Nearly every namespace depends on several others, so there is no layering left that tells where a change stops."
+      "why": "Nearly every namespace depends on several others, so there is no layering left that tells where a change stops.",
+      "refactoring": {
+        "types": [
+          "Move Class"
+        ],
+        "fix": "Remove Reporting's fan-out to the 8 other namespaces: each report class moves to the namespace whose data it summarizes (CatalogReport to Catalog, OrderReport to Orders, RevenueReport to Billing, AdminReport to Admin, and so on), and Dashboard only combines the sections it is given (e.g. a list of Func<string>), so it depends on no other namespace. This brings the graph back to 17 dependencies between 9 namespaces, average degree 3.78. The dashboard renders the same sections in the same order."
+      }
     }
   ],
   "commits": [
